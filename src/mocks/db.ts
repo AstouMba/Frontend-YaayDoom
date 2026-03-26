@@ -16,6 +16,18 @@ export const mockUsers = [
     dateInscription: '2024-09-01',
   },
   {
+    id: 'u-004',
+    name: 'Fatou Sall',
+    email: 'fatou.sall@demo.com',
+    password: 'demo1234',
+    role: 'maman' as const,
+    phone: '+221 76 234 56 78',
+    dateNaissance: '1996-07-20',
+    isValidated: true,
+    statut: 'actif',
+    dateInscription: '2024-10-15',
+  },
+  {
     id: 'u-002',
     name: 'Dr. Fatou Sow',
     email: 'pro@demo.com',
@@ -123,6 +135,35 @@ export const mockBebes = [
     poidsActuel: 9.1,
     tailleActuelle: 74,
   },
+  // Jumeaux - Famille 2
+  {
+    id: 'b-002',
+    grossesseId: 'g-002',
+    mamanId: 'u-004',
+    nom: 'Moussa Sall',
+    dateNaissance: '2024-07-20',
+    sexe: 'Masculin',
+    poidsNaissance: 2.8,
+    tailleOrigine: 46,
+    groupeSanguin: 'A+',
+    ageActuel: '8 mois',
+    poidsActuel: 7.2,
+    tailleActuelle: 68,
+  },
+  {
+    id: 'b-003',
+    grossesseId: 'g-002',
+    mamanId: 'u-004',
+    nom: 'Mariama Sall',
+    dateNaissance: '2024-07-20',
+    sexe: 'Féminin',
+    poidsOrigine: 2.5,
+    tailleOrigine: 45,
+    groupeSanguin: 'O+',
+    ageActuel: '8 mois',
+    poidsActuel: 6.8,
+    tailleActuelle: 66,
+  },
 ];
 
 export const mockVaccins = [
@@ -135,23 +176,44 @@ export const mockVaccins = [
   { id: 'v-007', bebeId: 'b-001', nom: 'ROR (Rougeole-Oreillons-Rubéole)', age: '9 mois', datePrevu: '2024-12-15', dateAdministre: '2024-12-15', statut: 'completed', professionnel: 'Dr. Fatou Sow', notes: '' },
   { id: 'v-008', bebeId: 'b-001', nom: 'Fièvre Jaune', age: '9 mois', datePrevu: '2024-12-15', dateAdministre: '2024-12-15', statut: 'completed', professionnel: 'Dr. Fatou Sow', notes: '' },
   { id: 'v-009', bebeId: 'b-001', nom: 'Méningite A', age: '12 mois', datePrevu: '2025-03-15', dateAdministre: null, statut: 'upcoming', professionnel: null, notes: '' },
-  { id: 'v-010', bebeId: 'b-001', nom: 'Pneumocoque', age: '15 mois', datePrevu: '2025-06-15', dateAdministre: null, statut: 'upcoming', professionnel: null, notes: '' },
-  { id: 'v-011', bebeId: 'b-001', nom: 'Rappel DTC + Polio', age: '18 mois', datePrevu: '2025-09-15', dateAdministre: null, statut: 'upcoming', professionnel: null, notes: '' },
+  { id: 'v-010', bebeId: 'b-001', nom: 'Pneumocoque', age: '24 mois', datePrevu: '2026-09-15', dateAdministre: null, statut: 'upcoming', professionnel: null, notes: '' },
+  { id: 'v-011', bebeId: 'b-001', nom: 'Rappel DTC + Polio', age: '18 mois', datePrevu: '2027-03-15', dateAdministre: null, statut: 'upcoming', professionnel: null, notes: '' },
 ];
 
 export const mockCroissanceBebe = [
-  { mois: 0, label: 'Naissance', poids: 3.2, taille: 49 },
-  { mois: 1, label: '1 mois', poids: 4.1, taille: 53 },
-  { mois: 2, label: '2 mois', poids: 5.0, taille: 57 },
-  { mois: 3, label: '3 mois', poids: 5.8, taille: 60 },
-  { mois: 4, label: '4 mois', poids: 6.5, taille: 63 },
-  { mois: 5, label: '5 mois', poids: 7.1, taille: 65 },
-  { mois: 6, label: '6 mois', poids: 7.6, taille: 67 },
-  { mois: 7, label: '7 mois', poids: 8.0, taille: 69 },
-  { mois: 8, label: '8 mois', poids: 8.4, taille: 71 },
-  { mois: 9, label: '9 mois', poids: 8.7, taille: 72 },
-  { mois: 10, label: '10 mois', poids: 8.9, taille: 73 },
-  { mois: 11, label: '11 mois', poids: 9.1, taille: 74 },
+  // Bebe b-001 (Aminata Jr)
+  { bebeId: 'b-001', mois: 0, label: 'Naissance', poids: 3.2, taille: 49 },
+  { bebeId: 'b-001', mois: 1, label: '1 mois', poids: 4.1, taille: 53 },
+  { bebeId: 'b-001', mois: 2, label: '2 mois', poids: 5.0, taille: 57 },
+  { bebeId: 'b-001', mois: 3, label: '3 mois', poids: 5.8, taille: 60 },
+  { bebeId: 'b-001', mois: 4, label: '4 mois', poids: 6.5, taille: 63 },
+  { bebeId: 'b-001', mois: 5, label: '5 mois', poids: 7.1, taille: 65 },
+  { bebeId: 'b-001', mois: 6, label: '6 mois', poids: 7.6, taille: 67 },
+  { bebeId: 'b-001', mois: 7, label: '7 mois', poids: 8.0, taille: 69 },
+  { bebeId: 'b-001', mois: 8, label: '8 mois', poids: 8.4, taille: 71 },
+  { bebeId: 'b-001', mois: 9, label: '9 mois', poids: 8.7, taille: 72 },
+  { bebeId: 'b-001', mois: 10, label: '10 mois', poids: 8.9, taille: 73 },
+  { bebeId: 'b-001', mois: 11, label: '11 mois', poids: 9.1, taille: 74 },
+  // Jumeau b-002 (Moussa)
+  { bebeId: 'b-002', mois: 0, label: 'Naissance', poids: 2.8, taille: 46 },
+  { bebeId: 'b-002', mois: 1, label: '1 mois', poids: 3.6, taille: 51 },
+  { bebeId: 'b-002', mois: 2, label: '2 mois', poids: 4.4, taille: 55 },
+  { bebeId: 'b-002', mois: 3, label: '3 mois', poids: 5.1, taille: 58 },
+  { bebeId: 'b-002', mois: 4, label: '4 mois', poids: 5.7, taille: 61 },
+  { bebeId: 'b-002', mois: 5, label: '5 mois', poids: 6.2, taille: 63 },
+  { bebeId: 'b-002', mois: 6, label: '6 mois', poids: 6.6, taille: 65 },
+  { bebeId: 'b-002', mois: 7, label: '7 mois', poids: 6.9, taille: 67 },
+  { bebeId: 'b-002', mois: 8, label: '8 mois', poids: 7.2, taille: 68 },
+  // Jumeau b-003 (Mariama)
+  { bebeId: 'b-003', mois: 0, label: 'Naissance', poids: 2.5, taille: 45 },
+  { bebeId: 'b-003', mois: 1, label: '1 mois', poids: 3.3, taille: 50 },
+  { bebeId: 'b-003', mois: 2, label: '2 mois', poids: 4.1, taille: 54 },
+  { bebeId: 'b-003', mois: 3, label: '3 mois', poids: 4.8, taille: 57 },
+  { bebeId: 'b-003', mois: 4, label: '4 mois', poids: 5.4, taille: 59 },
+  { bebeId: 'b-003', mois: 5, label: '5 mois', poids: 5.9, taille: 61 },
+  { bebeId: 'b-003', mois: 6, label: '6 mois', poids: 6.3, taille: 63 },
+  { bebeId: 'b-003', mois: 7, label: '7 mois', poids: 6.6, taille: 65 },
+  { bebeId: 'b-003', mois: 8, label: '8 mois', poids: 6.8, taille: 66 },
 ];
 
 export const mockUtilisateurs = [
@@ -181,3 +243,79 @@ export const mockStats = {
   grossessesParMois: [12, 19, 15, 22, 18, 25, 20, 28, 24, 31, 22, 18],
   labelsParMois: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
 };
+
+// ─── Dossier Familial - Types et Données ─────────────────────────────────────────
+
+export interface MembreFamilial {
+  id: string;
+  type: 'maman' | 'bebe';
+  lien: string;
+  nom: string;
+  photoUrl?: string;
+  age?: number;
+  estActif: boolean;
+  // Champs affichage maman
+  email?: string;
+  phone?: string;
+  semainesGrossesse?: number;
+  dateAccouchementPrevue?: string;
+  statutGrossesse?: 'VALIDÉE' | 'EN_ATTENTE';
+  // Champs affichage bébé
+  sexe?: 'Masculin' | 'Féminin';
+  dateNaissance?: string;
+  poids?: number;
+  taille?: number;
+  vaccinsEnRetard?: number;
+}
+
+export interface DossierFamilial {
+  id: string;
+  mamanId: string;
+  membres: MembreFamilial[];
+  grossesses: typeof mockGrossesses;
+  estGemellaire: boolean;
+}
+
+// Famille 1: Simple (1 maman + 1 bebe)
+export const mockFamille1: DossierFamilial = {
+  id: 'FAM-001',
+  mamanId: 'u-001',
+  estGemellaire: false,
+  membres: [
+    {
+      id: 'u-001', type: 'maman', lien: 'mere', nom: 'Aminata Diallo', age: 32, estActif: true,
+      email: 'aminata.diallo@email.com', phone: '+221 77 123 45 67',
+      semainesGrossesse: 24, dateAccouchementPrevue: '15 août 2025', statutGrossesse: 'VALIDÉE',
+    },
+    {
+      id: 'b-001', type: 'bebe', lien: 'fille', nom: 'Aminata Jr Diallo', age: 18, estActif: true,
+      sexe: 'Féminin', dateNaissance: '10/09/2023', poids: 11.2, taille: 80, vaccinsEnRetard: 1,
+    },
+  ],
+  grossesses: [mockGrossesses[0]],
+};
+
+// Famille 2: Jumeaux (1 maman + 2 bebes)
+export const mockFamille2: DossierFamilial = {
+  id: 'FAM-002',
+  mamanId: 'u-004',
+  estGemellaire: true,
+  membres: [
+    {
+      id: 'u-004', type: 'maman', lien: 'mere', nom: 'Fatou Sall', age: 28, estActif: true,
+      email: 'fatou.sall@email.com', phone: '+221 76 234 56 78',
+      semainesGrossesse: 10, dateAccouchementPrevue: '12 octobre 2025', statutGrossesse: 'EN_ATTENTE',
+    },
+    {
+      id: 'b-002', type: 'bebe', lien: 'jumeau1', nom: 'Moussa Sall', age: 8, estActif: true,
+      sexe: 'Masculin', dateNaissance: '20/07/2024', poids: 7.2, taille: 68, vaccinsEnRetard: 0,
+    },
+    {
+      id: 'b-003', type: 'bebe', lien: 'jumeau2', nom: 'Mariama Sall', age: 8, estActif: true,
+      sexe: 'Féminin', dateNaissance: '20/07/2024', poids: 6.8, taille: 66, vaccinsEnRetard: 2,
+    },
+  ],
+  grossesses: [mockGrossesses[1]],
+};
+
+export const mockFamilles: DossierFamilial[] = [mockFamille1, mockFamille2];

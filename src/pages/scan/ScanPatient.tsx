@@ -29,59 +29,56 @@ const ScanPatient = () => {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Simuler le scan du QR Code
+  // Simuler le scan du QR Code - Au hasard entre Simple et Jumeaux
   const handleScan = () => {
     setScanning(true);
     setError('');
 
+    // Random entre FAM-001 (Simple) et FAM-002 (Jumeaux)
+    const isJumeaux = Math.random() > 0.5;
+    const familleId = isJumeaux ? 'FAM-002' : 'FAM-001';
+
     // Simulation d'un scan réussi après 2 secondes
     setTimeout(() => {
-      // Données simulées d'une patiente
       const mockPatientData: PatientData = {
-        id: 'MAM-2025-001',
-        name: 'Aïssatou Ba',
-        email: 'aissatou.ba@email.com',
-        phone: '+221 77 456 78 90',
+        id: isJumeaux ? 'MAM-2025-002' : 'MAM-2025-001',
+        name: isJumeaux ? 'Fatou Sall' : 'Aminata Diallo',
+        email: isJumeaux ? 'fatou.sall@demo.com' : 'maman@demo.com',
+        phone: isJumeaux ? '+221 76 234 56 78' : '+221 77 123 45 67',
         grossesse: {
-          semaineActuelle: 24,
-          dateAccouchementPrevue: '2025-08-15',
-          dateDernieresRegles: '2024-10-15',
+          semaineActuelle: isJumeaux ? 10 : 26,
+          dateAccouchementPrevue: isJumeaux ? '2025-10-12' : '2025-06-17',
+          dateDernieresRegles: isJumeaux ? '2025-01-05' : '2024-09-10',
           statut: 'VALIDÉ'
-        },
-        bebe: {
-          nom: 'Mamadou Ba',
-          dateNaissance: '2024-03-15',
-          poids: '8.5 kg',
-          taille: '72 cm'
         }
       };
 
       setPatientData(mockPatientData);
       setScanning(false);
       
-      // Rediriger vers la page de consultation du patient
-      navigate('/consultation-patient', { state: { patient: mockPatientData } });
+      // Rediriger vers le dossier familial
+      navigate(`/famille/${familleId}`);
     }, 2000);
   };
 
-  // Simuler l'upload d'une image QR Code
+  // Simuler l'upload d'une image QR Code - Famille Jumeaux (FAM-002)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setScanning(true);
       setError('');
 
-      // Simulation de lecture du QR Code depuis l'image
+      // Simulation de lecture du QR Code - FAM-002 (jumeaux)
       setTimeout(() => {
         const mockPatientData: PatientData = {
           id: 'MAM-2025-002',
           name: 'Fatou Sall',
-          email: 'fatou.sall@email.com',
+          email: 'fatou.sall@demo.com',
           phone: '+221 76 234 56 78',
           grossesse: {
-            semaineActuelle: 32,
-            dateAccouchementPrevue: '2025-06-20',
-            dateDernieresRegles: '2024-09-10',
+            semaineActuelle: 10,
+            dateAccouchementPrevue: '2025-10-12',
+            dateDernieresRegles: '2025-01-05',
             statut: 'VALIDÉ'
           }
         };
@@ -89,8 +86,8 @@ const ScanPatient = () => {
         setPatientData(mockPatientData);
         setScanning(false);
         
-        // Rediriger vers la page de consultation du patient
-        navigate('/consultation-patient', { state: { patient: mockPatientData } });
+        // Rediriger vers le dossier familial (FAM-002 = Jumeaux)
+        navigate('/famille/FAM-002');
       }, 1500);
     }
   };
@@ -160,7 +157,7 @@ const ScanPatient = () => {
               Scanner une patiente
             </h1>
             <p className="text-sm text-gray-600">
-              Scannez le QR Code de la carte maman pour accéder à son dossier
+              Scannez le QR Code de la carte maman pour accéder à son dossier familial
             </p>
           </div>
 
@@ -193,7 +190,7 @@ const ScanPatient = () => {
           ) : (
             // Scan Options
             <div className="space-y-4">
-              {/* Option 1: Scan avec caméra */}
+              {/* Option 1: Scan avec caméra - Famille Simple */}
               <button
                 onClick={handleScan}
                 className="w-full h-24 flex flex-col items-center justify-center gap-2 rounded-lg text-white font-medium text-base hover:opacity-90 transition-opacity cursor-pointer"
@@ -212,7 +209,7 @@ const ScanPatient = () => {
                 </div>
               </div>
 
-              {/* Option 2: Upload image */}
+              {/* Option 2: Upload image - Famille Jumeaux */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -242,7 +239,7 @@ const ScanPatient = () => {
                   <li>Demandez à la patiente de présenter sa carte maman</li>
                   <li>Cliquez sur "Scanner avec la caméra"</li>
                   <li>Pointez la caméra vers le QR Code</li>
-                  <li>Le dossier s'affichera automatiquement</li>
+                  <li>Le dossier familial s'affichera automatiquement</li>
                 </ul>
               </div>
             </div>

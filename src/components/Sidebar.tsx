@@ -40,6 +40,7 @@ const Sidebar = () => {
 
   const proLinks = [
     { path: '/dashboard-pro', icon: 'ri-dashboard-line', label: 'Tableau de bord' },
+    { path: '/dashboard-pro/scan', icon: 'ri-qr-scan-line', label: 'Scanner Patient' },
     { path: '/dashboard-pro/consultations', icon: 'ri-stethoscope-line', label: 'Consultations' },
     { path: '/dashboard-pro/grossesses', icon: 'ri-heart-pulse-line', label: 'Grossesses' },
     { path: '/dashboard-pro/vaccinations', icon: 'ri-syringe-line', label: 'Vaccinations' },

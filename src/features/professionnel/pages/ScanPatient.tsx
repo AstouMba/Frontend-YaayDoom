@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 
 interface PatientData {
   id: string;
@@ -36,52 +36,46 @@ const ScanPatient = () => {
 
     // Simulation d'un scan réussi après 2 secondes
     setTimeout(() => {
-      // Données simulées d'une patiente
+      // Données simulées d'une patiente - redirige vers FAM-001 (simple)
       const mockPatientData: PatientData = {
         id: 'MAM-2025-001',
-        name: 'Aïssatou Ba',
-        email: 'aissatou.ba@email.com',
-        phone: '+221 77 456 78 90',
+        name: 'Aminata Diallo',
+        email: 'maman@demo.com',
+        phone: '+221 77 123 45 67',
         grossesse: {
-          semaineActuelle: 24,
-          dateAccouchementPrevue: '2025-08-15',
-          dateDernieresRegles: '2024-10-15',
+          semaineActuelle: 26,
+          dateAccouchementPrevue: '2025-06-17',
+          dateDernieresRegles: '2024-09-10',
           statut: 'VALIDÉ'
-        },
-        bebe: {
-          nom: 'Mamadou Ba',
-          dateNaissance: '2024-03-15',
-          poids: '8.5 kg',
-          taille: '72 cm'
         }
       };
 
       setPatientData(mockPatientData);
       setScanning(false);
       
-      // Rediriger vers la page de consultation du patient
-      navigate('/consultation-patient', { state: { patient: mockPatientData } });
+      // Rediriger vers le dossier familial (FAM-001 = Simple)
+      navigate('/famille/FAM-001');
     }, 2000);
   };
 
-  // Simuler l'upload d'une image QR Code
+  // Simuler l'upload d'une image QR Code - Famille jumeaux
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setScanning(true);
       setError('');
 
-      // Simulation de lecture du QR Code depuis l'image
+      // Simulation de lecture du QR Code - FAM-002 (jumeaux)
       setTimeout(() => {
         const mockPatientData: PatientData = {
           id: 'MAM-2025-002',
           name: 'Fatou Sall',
-          email: 'fatou.sall@email.com',
+          email: 'fatou.sall@demo.com',
           phone: '+221 76 234 56 78',
           grossesse: {
-            semaineActuelle: 32,
-            dateAccouchementPrevue: '2025-06-20',
-            dateDernieresRegles: '2024-09-10',
+            semaineActuelle: 10,
+            dateAccouchementPrevue: '2025-10-12',
+            dateDernieresRegles: '2025-01-05',
             statut: 'VALIDÉ'
           }
         };
@@ -89,8 +83,8 @@ const ScanPatient = () => {
         setPatientData(mockPatientData);
         setScanning(false);
         
-        // Rediriger vers la page de consultation du patient
-        navigate('/consultation-patient', { state: { patient: mockPatientData } });
+        // Rediriger vers le dossier familial (FAM-002 = Jumeaux)
+        navigate('/famille/FAM-002');
       }, 1500);
     }
   };
@@ -160,7 +154,7 @@ const ScanPatient = () => {
               Scanner une patiente
             </h1>
             <p className="text-sm text-gray-600">
-              Scannez le QR Code de la carte maman pour accéder à son dossier
+              Scannez le QR Code de la carte maman pour accéder à son dossier familial
             </p>
           </div>
 
@@ -201,6 +195,7 @@ const ScanPatient = () => {
               >
                 <i className="ri-camera-line text-3xl"></i>
                 <span>Scanner avec la caméra</span>
+                <span className="text-xs opacity-80">(Famille Simple)</span>
               </button>
 
               <div className="relative">
@@ -228,6 +223,7 @@ const ScanPatient = () => {
               >
                 <i className="ri-image-add-line text-3xl"></i>
                 <span>Importer une image QR Code</span>
+                <span className="text-xs opacity-80">(Famille Jumeaux)</span>
               </label>
             </div>
           )}
@@ -242,7 +238,7 @@ const ScanPatient = () => {
                   <li>Demandez à la patiente de présenter sa carte maman</li>
                   <li>Cliquez sur "Scanner avec la caméra"</li>
                   <li>Pointez la caméra vers le QR Code</li>
-                  <li>Le dossier s'affichera automatiquement</li>
+                  <li>Le dossier familial s'affichera automatiquement</li>
                 </ul>
               </div>
             </div>

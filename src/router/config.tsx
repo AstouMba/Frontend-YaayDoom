@@ -4,6 +4,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import DashboardMamanLayout from '../layouts/DashboardMamanLayout';
 import DashboardProLayout from '../layouts/DashboardProLayout';
 import DashboardAdminLayout from '../layouts/DashboardAdminLayout';
+import DossierFamilial from '../components/famille/DossierFamilial';
 
 // Pages originales dans src/pages/
 const HomePage = lazy(() => import('../pages/home/page'));
@@ -74,6 +75,17 @@ const routes: RouteObject[] = [
       { path: 'scan', element: <ScanPatient /> },
       { path: 'consultation-patient', element: <ConsultationPatient /> },
     ],
+  },
+
+  // ─── Dossier Familial ─────────────────────────────────────────────────
+  {
+    path: '/famille/:id',
+    element: (
+      <ProtectedRoute allowedRoles={['professionnel']}>
+        <DashboardProLayout />
+      </ProtectedRoute>
+    ),
+    children: [{ index: true, element: <DossierFamilial /> }],
   },
 
   // ─── Anciens liens scan (redirection) ───────────────────────────────
