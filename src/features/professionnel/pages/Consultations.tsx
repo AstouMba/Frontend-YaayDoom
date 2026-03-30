@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 interface Consultation {
-  id: number;
+  id: string;
   patientName: string;
   patientId: string;
   type: string;
@@ -21,7 +21,7 @@ const Consultations = () => {
   // Mock data - Consultations
   const [consultations] = useState<Consultation[]>([
     {
-      id: 1,
+      id: 'c-1',
       patientName: 'Aïssatou Ba',
       patientId: 'MAM-2025-001',
       type: 'Consultation prénatale',
@@ -32,7 +32,7 @@ const Consultations = () => {
       semaineGrossesse: 24
     },
     {
-      id: 2,
+      id: 'c-2',
       patientName: 'Khady Faye',
       patientId: 'MAM-2025-002',
       type: 'Échographie',
@@ -43,7 +43,7 @@ const Consultations = () => {
       semaineGrossesse: 32
     },
     {
-      id: 3,
+      id: 'c-3',
       patientName: 'Coumba Diop',
       patientId: 'MAM-2025-003',
       type: 'Consultation de suivi',
@@ -54,7 +54,7 @@ const Consultations = () => {
       semaineGrossesse: 16
     },
     {
-      id: 4,
+      id: 'c-4',
       patientName: 'Fatou Sall',
       patientId: 'MAM-2025-004',
       type: 'Consultation prénatale',
@@ -65,7 +65,7 @@ const Consultations = () => {
       semaineGrossesse: 8
     },
     {
-      id: 5,
+      id: 'c-5',
       patientName: 'Mariama Ndiaye',
       patientId: 'MAM-2025-005',
       type: 'Consultation d\'urgence',
@@ -76,7 +76,7 @@ const Consultations = () => {
       semaineGrossesse: 28
     },
     {
-      id: 6,
+      id: 'c-6',
       patientName: 'Aïssatou Ba',
       patientId: 'MAM-2025-001',
       type: 'Consultation prénatale',

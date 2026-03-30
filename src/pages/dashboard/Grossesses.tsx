@@ -1,100 +1,69 @@
-import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getGrossesses,
+  rejectGrossesse,
+  validateGrossesse,
+} from '../../features/professionnel/services/professionnelService';
+
+type FilterStatut = 'TOUS' | 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE' | 'ANNULEE';
 
 interface Grossesse {
-  id: number;
-  patientName: string;
-  patientId: string;
-  statut: 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE';
+  id: string;
+  mamanNom: string;
+  mamanId: string;
+  statut: 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE' | 'ANNULEE';
   dateDernieresRegles: string;
   datePresumeAccouchement: string;
   semaineGrossesse: number;
-  nombreGrossessesPrecedentes: number;
-  antecedents: string;
-  dateDeclaration: string;
+  notes?: string;
+  dateDeclaration?: string;
 }
 
 const Grossesses = () => {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatut, setFilterStatut] = useState<'TOUS' | 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE'>('TOUS');
+  const [filterStatut, setFilterStatut] = useState<FilterStatut>('TOUS');
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [grossesses, setGrossesses] = useState<Grossesse[]>([]);
 
-  // Mock data - Grossesses
-  const [grossesses, setGrossesses] = useState<Grossesse[]>([
-    {
-      id: 1,
-      patientName: 'Aïssatou Ba',
-      patientId: 'MAM-2025-001',
-      statut: 'VALIDEE',
-      dateDernieresRegles: '2024-07-20',
-      datePresumeAccouchement: '2025-04-26',
-      semaineGrossesse: 24,
-      nombreGrossessesPrecedentes: 1,
-      antecedents: 'Première grossesse sans complications',
-      dateDeclaration: '2024-08-15'
-    },
-    {
-      id: 2,
-      patientName: 'Khady Faye',
-      patientId: 'MAM-2025-002',
-      statut: 'VALIDEE',
-      dateDernieresRegles: '2024-05-15',
-      datePresumeAccouchement: '2025-02-19',
-      semaineGrossesse: 32,
-      nombreGrossessesPrecedentes: 2,
-      antecedents: 'Deux grossesses précédentes normales',
-      dateDeclaration: '2024-06-10'
-    },
-    {
-      id: 3,
-      patientName: 'Coumba Diop',
-      patientId: 'MAM-2025-003',
-      statut: 'EN_ATTENTE',
-      dateDernieresRegles: '2024-09-10',
-      datePresumeAccouchement: '2025-06-17',
-      semaineGrossesse: 16,
-      nombreGrossessesPrecedentes: 0,
-      antecedents: 'Première grossesse',
-      dateDeclaration: '2024-10-05'
-    },
-    {
-      id: 4,
-      patientName: 'Fatou Sall',
-      patientId: 'MAM-2025-004',
-      statut: 'EN_ATTENTE',
-      dateDernieresRegles: '2024-11-05',
-      datePresumeAccouchement: '2025-08-12',
-      semaineGrossesse: 8,
-      nombreGrossessesPrecedentes: 0,
-      antecedents: 'Aucun antécédent particulier',
-      dateDeclaration: '2024-12-01'
-    },
-    {
-      id: 5,
-      patientName: 'Mariama Ndiaye',
-      patientId: 'MAM-2025-005',
-      statut: 'VALIDEE',
-      dateDernieresRegles: '2024-06-20',
-      datePresumeAccouchement: '2025-03-27',
-      semaineGrossesse: 28,
-      nombreGrossessesPrecedentes: 3,
-      antecedents: 'Hypertension lors de la dernière grossesse',
-      dateDeclaration: '2024-07-18'
-    }
-  ]);
-
-  const handleValider = (id: number) => {
-    setGrossesses(prev => prev.map(g => 
-      g.id === id ? { ...g, statut: 'VALIDEE' as const } : g
-    ));
+  const loadGrossesses = async () => {
+    const data = await getGrossesses();
+    setGrossesses(data || []);
   };
 
-  const filteredGrossesses = grossesses.filter(g => {
-    const matchSearch = g.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       g.patientId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatut = filterStatut === 'TOUS' || g.statut === filterStatut;
-    return matchSearch && matchStatut;
-  });
+  useEffect(() => {
+    loadGrossesses().catch(() => setGrossesses([]));
+  }, []);
+
+  const handleValider = async (id: string) => {
+    setLoadingId(id);
+    try {
+      await validateGrossesse(id);
+      await loadGrossesses();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleRejeter = async (id: string) => {
+    if (!confirm('Voulez-vous rejeter cette grossesse ?')) return;
+
+    setLoadingId(id);
+    try {
+      await rejectGrossesse(id);
+      await loadGrossesses();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const filteredGrossesses = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return grossesses.filter((g) => {
+      const matchSearch = !q || g.mamanNom.toLowerCase().includes(q) || String(g.mamanId).includes(q);
+      const matchStatut = filterStatut === 'TOUS' || g.statut === filterStatut;
+      return matchSearch && matchStatut;
+    });
+  }, [grossesses, searchTerm, filterStatut]);
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
@@ -104,6 +73,8 @@ const Grossesses = () => {
         return 'bg-green-100 text-green-800';
       case 'TERMINEE':
         return 'bg-gray-100 text-gray-800';
+      case 'ANNULEE':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -114,9 +85,11 @@ const Grossesses = () => {
       case 'EN_ATTENTE':
         return 'En attente';
       case 'VALIDEE':
-        return 'Validée';
+        return 'Validee';
       case 'TERMINEE':
-        return 'Terminée';
+        return 'Terminee';
+      case 'ANNULEE':
+        return 'Annulee';
       default:
         return statut;
     }
@@ -124,17 +97,15 @@ const Grossesses = () => {
 
   return (
     <div className="p-6 max-w-full">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--dark-brown)' }}>
           Gestion des Grossesses
         </h1>
         <p className="text-sm text-gray-600">
-          Validation et suivi des déclarations de grossesse
+          Validation et suivi des declarations de grossesse
         </p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
@@ -155,7 +126,7 @@ const Grossesses = () => {
             <div>
               <p className="text-xs text-gray-600 mb-1">En attente</p>
               <p className="text-xl font-bold text-yellow-600">
-                {grossesses.filter(g => g.statut === 'EN_ATTENTE').length}
+                {grossesses.filter((g) => g.statut === 'EN_ATTENTE').length}
               </p>
             </div>
             <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-yellow-50">
@@ -167,9 +138,9 @@ const Grossesses = () => {
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-600 mb-1">Validées</p>
+              <p className="text-xs text-gray-600 mb-1">Validees</p>
               <p className="text-xl font-bold text-green-600">
-                {grossesses.filter(g => g.statut === 'VALIDEE').length}
+                {grossesses.filter((g) => g.statut === 'VALIDEE').length}
               </p>
             </div>
             <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-green-50">
@@ -181,9 +152,9 @@ const Grossesses = () => {
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-600 mb-1">Terminées</p>
+              <p className="text-xs text-gray-600 mb-1">Terminees</p>
               <p className="text-xl font-bold text-gray-600">
-                {grossesses.filter(g => g.statut === 'TERMINEE').length}
+                {grossesses.filter((g) => g.statut === 'TERMINEE').length}
               </p>
             </div>
             <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-50">
@@ -193,7 +164,6 @@ const Grossesses = () => {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
@@ -211,33 +181,32 @@ const Grossesses = () => {
           <div>
             <select
               value={filterStatut}
-              onChange={(e) => setFilterStatut(e.target.value as any)}
+              onChange={(e) => setFilterStatut(e.target.value as FilterStatut)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
             >
               <option value="TOUS">Tous les statuts</option>
               <option value="EN_ATTENTE">En attente</option>
-              <option value="VALIDEE">Validée</option>
-              <option value="TERMINEE">Terminée</option>
+              <option value="VALIDEE">Validee</option>
+              <option value="TERMINEE">Terminee</option>
+              <option value="ANNULEE">Annulee</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Grossesses List */}
       <div className="space-y-4">
         {filteredGrossesses.map((grossesse) => (
           <div key={grossesse.id} className="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-              {/* Patient Info */}
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--background-soft)' }}>
                   <i className="ri-user-line text-base" style={{ color: 'var(--primary-orange)' }}></i>
                 </div>
                 <div>
                   <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--dark-brown)' }}>
-                    {grossesse.patientName}
+                    {grossesse.mamanNom}
                   </h3>
-                  <p className="text-xs text-gray-500 mb-2">ID: {grossesse.patientId}</p>
+                  <p className="text-xs text-gray-500 mb-2">ID: MAM-{grossesse.mamanId}</p>
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatutBadge(grossesse.statut)}`}>
                       {getStatutLabel(grossesse.statut)}
@@ -246,55 +215,52 @@ const Grossesses = () => {
                       {grossesse.semaineGrossesse} SA
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Déclarée le {new Date(grossesse.dateDeclaration).toLocaleDateString('fr-FR')}
-                  </p>
+                  {grossesse.dateDeclaration && (
+                    <p className="text-xs text-gray-500">
+                      Declaree le {new Date(grossesse.dateDeclaration).toLocaleDateString('fr-FR')}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Grossesse Details */}
               <div className="flex-1 lg:max-w-2xl">
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
-                    <div className="text-xs text-gray-600 mb-1">Dernières règles</div>
+                    <div className="text-xs text-gray-600 mb-1">Dernieres regles</div>
                     <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {new Date(grossesse.dateDernieresRegles).toLocaleDateString('fr-FR')}
+                      {grossesse.dateDernieresRegles ? new Date(grossesse.dateDernieresRegles).toLocaleDateString('fr-FR') : '-'}
                     </div>
                   </div>
                   <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
-                    <div className="text-xs text-gray-600 mb-1">Date présumée accouchement</div>
+                    <div className="text-xs text-gray-600 mb-1">Date presumee accouchement</div>
                     <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {new Date(grossesse.datePresumeAccouchement).toLocaleDateString('fr-FR')}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
-                    <div className="text-xs text-gray-600 mb-1">Grossesses précédentes</div>
-                    <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {grossesse.nombreGrossessesPrecedentes}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
-                    <div className="text-xs text-gray-600 mb-1">Semaine actuelle</div>
-                    <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {grossesse.semaineGrossesse} SA
+                      {grossesse.datePresumeAccouchement ? new Date(grossesse.datePresumeAccouchement).toLocaleDateString('fr-FR') : '-'}
                     </div>
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-gray-200 mb-3">
-                  <div className="text-xs text-gray-600 mb-1 font-medium">Antécédents médicaux</div>
-                  <p className="text-sm text-gray-700">{grossesse.antecedents}</p>
+                  <div className="text-xs text-gray-600 mb-1 font-medium">Notes</div>
+                  <p className="text-sm text-gray-700">{grossesse.notes || 'Aucune note'}</p>
                 </div>
 
-                {/* Actions */}
                 {grossesse.statut === 'EN_ATTENTE' && (
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleValider(grossesse.id)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
+                      disabled={loadingId === grossesse.id}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                       style={{ backgroundColor: 'var(--primary-teal)' }}
                     >
                       <i className="ri-checkbox-circle-line"></i>
-                      Valider la grossesse
+                      Valider
+                    </button>
+                    <button
+                      onClick={() => handleRejeter(grossesse.id)}
+                      disabled={loadingId === grossesse.id}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 bg-red-500"
+                    >
+                      <i className="ri-close-circle-line"></i>
+                      Rejeter
                     </button>
                   </div>
                 )}
@@ -307,7 +273,7 @@ const Grossesses = () => {
       {filteredGrossesses.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
           <i className="ri-inbox-line text-5xl text-gray-300 mb-3"></i>
-          <p className="text-sm text-gray-500">Aucune grossesse trouvée</p>
+          <p className="text-sm text-gray-500">Aucune grossesse trouvee</p>
         </div>
       )}
     </div>

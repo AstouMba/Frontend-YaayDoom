@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createGrossesse } from '../../features/maman/services/mamanService';
 
 export default function CreateGrossesse() {
   const navigate = useNavigate();
@@ -11,12 +12,18 @@ export default function CreateGrossesse() {
     allergies: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Appel API pour créer la grossesse
-    console.log('Données grossesse:', formData);
-    alert('Votre déclaration de grossesse a été enregistrée. Elle est en attente de validation par un professionnel de santé.');
-    navigate('/dashboard-maman');
+    try {
+      await createGrossesse({
+        dateDernieresRegles: formData.dateDernieresRegles,
+        antecedentsMedicaux: formData.antecedentsMedicaux,
+      });
+      alert('Votre déclaration de grossesse a été enregistrée.');
+      navigate('/dashboard-maman');
+    } catch {
+      alert('Impossible d’enregistrer la déclaration pour le moment.');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -79,7 +86,6 @@ export default function CreateGrossesse() {
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 transition-all"
-                style={{ focusRing: 'var(--primary-teal)' }}
               />
               <p className="mt-1 text-xs text-gray-500">
                 Cette date permet de calculer votre terme et votre semaine de grossesse

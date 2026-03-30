@@ -1,39 +1,69 @@
-import { useState } from 'react';
-import { mockProfessionnelsEnAttente } from '../../mocks/db';
+import { useEffect, useState } from 'react';
+import {
+  approveProfessionnel,
+  getProfessionnelsEnAttente,
+  rejectProfessionnel,
+} from '../../features/admin/services/adminService';
 
 interface Professionnel {
-  id: number;
+  id: string;
   nom: string;
   email: string;
   telephone: string;
   specialite: string;
   matricule: string;
   centreDesante: string;
-  documentUrl: string;
+  documentUrl?: string;
   dateInscription: string;
 }
 
 const Validation = () => {
-  const [professionnels, setProfessionnels] = useState<Professionnel[]>(mockProfessionnelsEnAttente);
+  const [professionnels, setProfessionnels] = useState<Professionnel[]>([]);
   const [selectedPro, setSelectedPro] = useState<Professionnel | null>(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfessionnels = async () => {
+      try {
+        const data = await getProfessionnelsEnAttente();
+        setProfessionnels(data);
+      } catch {
+        showNotif('error', 'Impossible de charger les professionnels en attente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfessionnels();
+  }, []);
 
   const showNotif = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleApprouver = (id: number) => {
-    setProfessionnels(prev => prev.filter(p => p.id !== id));
-    setShowDocumentModal(false);
-    showNotif('success', 'Professionnel approuvé avec succès.');
+  const handleApprouver = async (id: string) => {
+    try {
+      await approveProfessionnel(id);
+      setProfessionnels(prev => prev.filter(p => p.id !== id));
+      setShowDocumentModal(false);
+      showNotif('success', 'Professionnel approuvé avec succès.');
+    } catch {
+      showNotif('error', 'Erreur lors de l’approbation.');
+    }
   };
 
-  const handleRejeter = (id: number) => {
-    setProfessionnels(prev => prev.filter(p => p.id !== id));
-    setShowDocumentModal(false);
-    showNotif('error', 'Demande d\'inscription rejetée.');
+  const handleRejeter = async (id: string) => {
+    try {
+      await rejectProfessionnel(id, 'Rejeté par un administrateur');
+      setProfessionnels(prev => prev.filter(p => p.id !== id));
+      setShowDocumentModal(false);
+      showNotif('error', 'Demande d\'inscription rejetée.');
+    } catch {
+      showNotif('error', 'Erreur lors du rejet.');
+    }
   };
 
   const handleVoirDocument = (pro: Professionnel) => {
@@ -67,7 +97,11 @@ const Validation = () => {
         </div>
       </div>
 
-      {professionnels.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-xl p-12 text-center border" style={{ borderColor: '#EAD7C8' }}>
+          <p className="text-sm text-gray-500">Chargement...</p>
+        </div>
+      ) : professionnels.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center border" style={{ borderColor: '#EAD7C8' }}>
           <i className="ri-checkbox-circle-line text-4xl mb-3" style={{ color: 'var(--primary-teal)' }}></i>
           <p className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>Tout est traité !</p>
@@ -156,8 +190,8 @@ const Validation = () => {
               <div className="rounded-xl p-8 flex flex-col items-center justify-center min-h-48 mb-5" style={{ backgroundColor: 'var(--background-soft)' }}>
                 <i className="ri-file-pdf-line text-5xl text-red-500 mb-3"></i>
                 <p className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>Document PDF</p>
-                <p className="text-xs text-gray-500 mt-1 mb-4">{selectedPro.documentUrl}</p>
-                <a href={selectedPro.documentUrl} target="_blank" rel="noopener noreferrer"
+                <p className="text-xs text-gray-500 mt-1 mb-4">{selectedPro.documentUrl || 'Aucun document fourni'}</p>
+                <a href={selectedPro.documentUrl || '#'} target="_blank" rel="noopener noreferrer"
                   className="px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer whitespace-nowrap"
                   style={{ backgroundColor: 'var(--primary-teal)' }}>
                   <i className="ri-download-line mr-2"></i>Télécharger

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getStatistiques } from '../../features/admin/services/adminService';
 import {
   Chart,
   BarController,
@@ -27,12 +28,34 @@ Chart.register(
 const Statistiques = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [stats, setStats] = useState({
+    totalMamans: 0,
+    totalProfessionnels: 0,
+    grossessesActives: 0,
+    consultationsTotal: 0,
+  });
   const chartGrossessesRef = useRef<HTMLCanvasElement>(null);
   const chartUtilisateursRef = useRef<HTMLCanvasElement>(null);
   const chartGrossessesInstance = useRef<Chart | null>(null);
   const chartUtilisateursInstance = useRef<Chart | null>(null);
 
   useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await getStatistiques();
+        setStats({
+          totalMamans: data.totalMamans ?? 0,
+          totalProfessionnels: data.totalProfessionnels ?? 0,
+          grossessesActives: data.grossessesActives ?? 0,
+          consultationsTotal: data.consultationsTotal ?? 0,
+        });
+      } catch {
+        // keep fallback values
+      }
+    };
+
+    loadStats();
+
     if (chartGrossessesRef.current) {
       if (chartGrossessesInstance.current) {
         chartGrossessesInstance.current.destroy();
@@ -180,7 +203,7 @@ const Statistiques = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Total Mamans</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-teal)' }}>156</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-teal)' }}>{stats.totalMamans}</p>
                   <p className="text-xs text-green-600 mt-1">+12 ce mois</p>
                 </div>
                 <div className="w-10 h-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
@@ -193,7 +216,7 @@ const Statistiques = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Professionnels</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-orange)' }}>23</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-orange)' }}>{stats.totalProfessionnels}</p>
                   <p className="text-xs text-green-600 mt-1">+3 ce mois</p>
                 </div>
                 <div className="w-10 h-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
@@ -206,7 +229,7 @@ const Statistiques = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Grossesses actives</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-teal)' }}>89</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-teal)' }}>{stats.grossessesActives}</p>
                   <p className="text-xs text-green-600 mt-1">+8 ce mois</p>
                 </div>
                 <div className="w-10 h-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
@@ -219,7 +242,7 @@ const Statistiques = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-600 mb-1">Consultations</p>
-                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-orange)' }}>342</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--primary-orange)' }}>{stats.consultationsTotal}</p>
                   <p className="text-xs text-green-600 mt-1">+45 ce mois</p>
                 </div>
                 <div className="w-10 h-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>

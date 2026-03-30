@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, Filler,
 } from 'chart.js';
-import { mockBebes, mockCroissanceBebe, mockVaccins } from '../../mocks/db';
+import { getBebe, getCroissanceBebe, getVaccins } from '../../features/maman/services/mamanService';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -12,10 +12,40 @@ type Tab = 'infos' | 'croissance' | 'historique';
 
 export default function Bebe() {
   const [activeTab, setActiveTab] = useState<Tab>('infos');
+  const [bebe, setBebe] = useState<any>(null);
+  const [croissance, setCroissance] = useState<any[]>([]);
+  const [vaccins, setVaccins] = useState<any[]>([]);
 
-  const bebe = mockBebes[0];
-  const croissance = mockCroissanceBebe;
-  const vaccins = mockVaccins;
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [bebeData, croissanceData, vaccinsData] = await Promise.all([
+          getBebe(),
+          getCroissanceBebe(),
+          getVaccins(),
+        ]);
+        setBebe(bebeData);
+        setCroissance(croissanceData || []);
+        setVaccins(vaccinsData || []);
+      } catch {
+        setBebe(null);
+        setCroissance([]);
+        setVaccins([]);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (!bebe) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-2xl p-8 text-center shadow-lg border border-gray-100">
+          <p className="text-sm text-gray-500">Aucune donnée bébé disponible pour le moment.</p>
+        </div>
+      </div>
+    );
+  }
 
   const vaccinsDone = vaccins.filter(v => v.statut === 'completed');
   const vaccinsUpcoming = vaccins.filter(v => v.statut !== 'completed');

@@ -1,22 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { getBebe, getVaccins } from '../../features/maman/services/mamanService';
 
 export default function Carte() {
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+  const [bebe, setBebe] = useState<any>(null);
+  const [vaccinsCount, setVaccinsCount] = useState(0);
+  const [consultationsCount] = useState(0);
 
-  // Données mock de la carte
-  const carteData = {
-    nomMaman: 'Fatou Diop',
-    nomBebe: 'Aminata Diallo',
-    dateNaissance: '15 Mars 2024',
-    sexe: 'Féminin',
-    groupeSanguin: 'O+',
-    numeroCarnet: 'YD-2024-00156',
-    centreNaissance: 'Hôpital Principal de Dakar',
-    qrCodeData: 'YD-2024-00156-AMINATA-DIALLO',
-    dateCreation: '20 Mars 2024',
-    lieuCreation: 'Dakar'
-  };
+  useEffect(() => {
+    Promise.all([getBebe(), getVaccins()])
+      .then(([bebeData, vaccins]) => {
+        setBebe(bebeData || null);
+        setVaccinsCount(Array.isArray(vaccins) ? vaccins.filter((v: any) => v.statut === 'completed').length : 0);
+      })
+      .catch(() => {
+        setBebe(null);
+        setVaccinsCount(0);
+      });
+  }, []);
+
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('yaydoom_user') || 'null');
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const carteData = useMemo(() => {
+    const rawDate = bebe?.dateNaissance || '';
+    const formattedDate = rawDate
+      ? new Date(rawDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+      : '-';
+
+    const numeroCarnet = currentUser?.id
+      ? `YD-${String(currentUser.id).replace(/-/g, '').slice(0, 8).toUpperCase()}`
+      : 'YD-000000';
+    const qrCodeData = currentUser?.id || `${numeroCarnet}-${(bebe?.nom || 'BEBE').toUpperCase()}`;
+
+    return {
+      nomMaman: currentUser?.name || 'Maman',
+      nomBebe: bebe?.nom || 'Bebe',
+      dateNaissance: formattedDate,
+      sexe: bebe?.sexe || '-',
+      groupeSanguin: '-',
+      numeroCarnet,
+      centreNaissance: 'Centre de sante',
+      qrCodeData,
+      dateCreation: new Date().toLocaleDateString('fr-FR'),
+      lieuCreation: 'Dakar',
+    };
+  }, [bebe, currentUser]);
 
   const handleDownloadPDF = () => {
     alert('Téléchargement du PDF en cours...');
@@ -229,7 +264,7 @@ export default function Carte() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Vaccins à jour</p>
-              <p className="text-2xl font-bold text-gray-800">8/11</p>
+              <p className="text-2xl font-bold text-gray-800">{vaccinsCount}</p>
             </div>
           </div>
         </div>
@@ -241,7 +276,7 @@ export default function Carte() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Consultations</p>
-              <p className="text-2xl font-bold text-gray-800">12</p>
+              <p className="text-2xl font-bold text-gray-800">{consultationsCount}</p>
             </div>
           </div>
         </div>

@@ -3,59 +3,62 @@
  */
 import { api } from '../../../core/api/api';
 
-// Simulate network delay
-const delay = (ms = 600) => new Promise((resolve) => setTimeout(resolve, ms));
+const normalizeUser = (user) => ({
+  id: String(user.id),
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  phone: user.phone || undefined,
+  isValidated: Boolean(user.is_validated),
+  specialite: user.specialite || undefined,
+});
 
 /**
- * Login user
- * @param {string} email 
- * @param {string} password 
+ * Login user - supports both phone and email
+ * @param {string} loginId - phone number or email
+ * @param {string} password
  * @returns {Promise<{user: object, token: string}>}
  */
-export const login = async (email, password) => {
-  await delay();
-  
-  // Demo accounts
-  const roles = {
-    'maman@demo.com': 'maman',
-    'pro@demo.com': 'professionnel',
-    'admin@demo.com': 'admin',
+export const login = async (loginId, password) => {
+  const payload = {
+    login: loginId,
+    email: loginId.includes('@') ? loginId : undefined,
+    password,
   };
-  
-  const role = roles[email];
-  if (!role || password !== 'demo1234') {
-    throw new Error('Identifiants incorrects');
-  }
-  
-  // Return mock user based on role
-  const users = {
-    maman: { id: 'u-001', name: 'Aminata Diallo', email: 'maman@demo.com', role: 'maman', phone: '+221 77 123 45 67', isValidated: true },
-    professionnel: { id: 'u-002', name: 'Dr. Fatou Sow', email: 'pro@demo.com', role: 'professionnel', phone: '+221 76 234 56 78', isValidated: true, specialite: 'Gynécologue' },
-    admin: { id: 'u-003', name: 'Administrateur', email: 'admin@demo.com', role: 'admin', isValidated: true },
-  };
-  
+
+  const response = await api.post('/auth/login', payload);
+
   return {
-    user: users[role],
-    token: 'demo-token-' + role,
+    user: normalizeUser(response.data.user),
+    token: response.data.token,
   };
 };
 
 /**
  * Register new user
- * @param {object} userData 
- * @returns {Promise<{success: boolean, user: object}>}
+ * @param {object} userData
+ * @returns {Promise<{success: boolean, user: object, message?: string}>}
  */
 export const register = async (userData) => {
-  await delay();
-  
-  // Simulate successful registration
+  const sanitizedPhone = (userData.phone || '').replace(/\s+/g, '');
+
+  const payload = {
+    name: userData.fullName,
+    phone: sanitizedPhone || null,
+    email: userData.email || `${sanitizedPhone || Date.now()}@yaaydoom.local`,
+    password: userData.password,
+    role: userData.role,
+    specialite: userData.specialty || null,
+    matricule: userData.matricule || null,
+    centre_de_sante: userData.healthCenter || null,
+  };
+
+  const response = await api.post('/auth/register', payload);
+
   return {
     success: true,
-    user: {
-      id: 'u-' + Date.now(),
-      ...userData,
-      isValidated: userData.role === 'maman', // Mamans are auto-validated
-    },
+    user: normalizeUser(response.data.user),
+    message: response.data.message,
   };
 };
 
@@ -64,8 +67,7 @@ export const register = async (userData) => {
  * @returns {Promise<void>}
  */
 export const logout = async () => {
-  await delay(200);
-  // Clear local storage is handled by the store
+  await api.post('/auth/logout');
 };
 
 /**
@@ -73,35 +75,29 @@ export const logout = async () => {
  * @returns {Promise<object>}
  */
 export const getCurrentUser = async () => {
-  await delay();
-  return { name: 'Fatou Diallo', email: 'maman@demo.com', role: 'maman' };
+  const response = await api.get('/auth/me');
+  return normalizeUser(response.data);
 };
 
 /**
  * Update user profile
- * @param {object} userData 
+ * @param {object} userData
  * @returns {Promise<object>}
  */
 export const updateProfile = async (userData) => {
-  await delay();
-  return { success: true, ...userData };
+  const response = await api.patch('/auth/me', userData);
+  return response.data;
 };
 
 /**
  * Change password
- * @param {string} currentPassword 
- * @param {string} newPassword 
+ * @param {string} currentPassword
+ * @param {string} newPassword
  * @returns {Promise<{success: boolean}>}
  */
 export const changePassword = async (currentPassword, newPassword) => {
-  await delay();
-  
-  // Demo validation
-  if (currentPassword !== 'demo1234') {
-    throw new Error('Mot de passe actuel incorrect');
-  }
-  
-  return { success: true };
+  const response = await api.post('/auth/change-password', { currentPassword, newPassword });
+  return response.data;
 };
 
 export default {

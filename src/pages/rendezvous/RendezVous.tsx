@@ -1,10 +1,24 @@
-import { useState } from 'react';
-import { mockRendezVous } from '../../mocks/db';
+import { useEffect, useState } from 'react';
+import { getRendezVous } from '../../features/maman/services/mamanService';
 
 type Tab = 'upcoming' | 'past';
 
 export default function RendezVous() {
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const rdv = await getRendezVous();
+        setUpcomingAppointments(rdv || []);
+      } catch {
+        setUpcomingAppointments([]);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'upcoming', label: 'À venir', icon: 'ri-calendar-event-fill' },
@@ -43,8 +57,8 @@ export default function RendezVous() {
       {/* ─── Tab: À venir ──────────────────────────────────────── */}
       {activeTab === 'upcoming' && (
         <div className="space-y-4">
-          {mockRendezVous.length > 0 ? (
-            mockRendezVous.map(rdv => (
+          {upcomingAppointments.length > 0 ? (
+            upcomingAppointments.map(rdv => (
               <div key={rdv.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">

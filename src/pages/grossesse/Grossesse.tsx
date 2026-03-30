@@ -1,12 +1,36 @@
-import { useState } from 'react';
-import { mockEvolGrossesse, mockRendezVous } from '../../mocks/db';
+import { useEffect, useState } from 'react';
+import { getEvolutionGrossesse, getGrossesse, getRendezVous } from '../../features/maman/services/mamanService';
 
 type Tab = 'evolution' | 'rendezvous' | 'suivi';
 
 export default function Grossesse() {
   const [activeTab, setActiveTab] = useState<Tab>('evolution');
+  const [semaineActuelle, setSemaineActuelle] = useState(0);
+  const [datePrevue, setDatePrevue] = useState('');
+  const [evolution, setEvolution] = useState<any[]>([]);
+  const [rendezVous, setRendezVous] = useState<any[]>([]);
 
-  const semaineActuelle = 26;
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [grossesse, evol, rdv] = await Promise.all([
+          getGrossesse(),
+          getEvolutionGrossesse(),
+          getRendezVous(),
+        ]);
+
+        setSemaineActuelle(grossesse?.semaineGrossesse || 0);
+        setDatePrevue(grossesse?.dateAccouchePrevue || '');
+        setEvolution(evol || []);
+        setRendezVous(rdv || []);
+      } catch {
+        setEvolution([]);
+        setRendezVous([]);
+      }
+    };
+
+    loadData();
+  }, []);
   
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'evolution', label: 'Évolution', icon: 'ri-line-chart-line' },
@@ -56,7 +80,9 @@ export default function Grossesse() {
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-sm text-gray-500">Date prévue</p>
-                <p className="text-lg font-bold text-orange-500">17 Juin 2025</p>
+                <p className="text-lg font-bold text-orange-500">
+                  {datePrevue ? new Date(datePrevue).toLocaleDateString('fr-FR') : '-'}
+                </p>
               </div>
             </div>
 
@@ -92,7 +118,7 @@ export default function Grossesse() {
             <div className="relative">
               <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
               <div className="space-y-6">
-                {mockEvolGrossesse.map((etape, idx) => (
+                {evolution.map((etape, idx) => (
                   <div key={etape.semaine} className={`flex items-start gap-4 pl-10 relative ${etape.semaine > semaineActuelle ? 'opacity-40' : ''}`}>
                     <div 
                       className={`absolute left-2.5 w-3 h-3 rounded-full border-2 -translate-y-0.5 ${
@@ -134,7 +160,7 @@ export default function Grossesse() {
               Prochains rendez-vous
             </h3>
             <div className="space-y-3">
-              {mockRendezVous.map(rdv => (
+              {rendezVous.map(rdv => (
                 <div key={rdv.id} className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">
                   <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <i className="ri-calendar-line text-orange-600 text-xl"></i>

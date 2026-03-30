@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useEffect, useMemo, useState } from 'react';
+import { getAllConsultations } from '../../features/professionnel/services/professionnelService';
+
+type FilterType = 'TOUS' | 'Consultation prénatale' | 'Échographie' | 'Consultation de suivi' | 'Consultation d\'urgence';
 
 interface Consultation {
-  id: number;
+  id: string;
   patientName: string;
   patientId: string;
   type: string;
@@ -14,100 +16,38 @@ interface Consultation {
 }
 
 const Consultations = () => {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'TOUS' | 'Consultation prénatale' | 'Échographie' | 'Consultation de suivi' | 'Consultation d\'urgence'>('TOUS');
+  const [filterType, setFilterType] = useState<FilterType>('TOUS');
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
 
-  // Mock data - Consultations
-  const [consultations] = useState<Consultation[]>([
-    {
-      id: 1,
-      patientName: 'Aïssatou Ba',
-      patientId: 'MAM-2025-001',
-      type: 'Consultation prénatale',
-      date: '2025-01-15',
-      tensionArterielle: '120/80',
-      poids: '68.5',
-      notes: 'Grossesse évoluant normalement. Tension artérielle stable. Poids en augmentation normale.',
-      semaineGrossesse: 24
-    },
-    {
-      id: 2,
-      patientName: 'Khady Faye',
-      patientId: 'MAM-2025-002',
-      type: 'Échographie',
-      date: '2025-01-14',
-      tensionArterielle: '115/75',
-      poids: '72.0',
-      notes: 'Échographie morphologique réalisée. Développement fœtal normal. Tous les paramètres sont dans les normes.',
-      semaineGrossesse: 32
-    },
-    {
-      id: 3,
-      patientName: 'Coumba Diop',
-      patientId: 'MAM-2025-003',
-      type: 'Consultation de suivi',
-      date: '2025-01-13',
-      tensionArterielle: '118/78',
-      poids: '65.2',
-      notes: 'Suivi régulier. Patiente en bonne santé. Recommandations nutritionnelles données.',
-      semaineGrossesse: 16
-    },
-    {
-      id: 4,
-      patientName: 'Fatou Sall',
-      patientId: 'MAM-2025-004',
-      type: 'Consultation prénatale',
-      date: '2025-01-12',
-      tensionArterielle: '122/82',
-      poids: '70.5',
-      notes: 'Première consultation prénatale. Examen clinique complet effectué. Prescription de vitamines prénatales.',
-      semaineGrossesse: 8
-    },
-    {
-      id: 5,
-      patientName: 'Mariama Ndiaye',
-      patientId: 'MAM-2025-005',
-      type: 'Consultation d\'urgence',
-      date: '2025-01-11',
-      tensionArterielle: '135/90',
-      poids: '75.0',
-      notes: 'Consultation d\'urgence pour tension élevée. Surveillance renforcée recommandée. Repos prescrit.',
-      semaineGrossesse: 28
-    },
-    {
-      id: 6,
-      patientName: 'Aïssatou Ba',
-      patientId: 'MAM-2025-001',
-      type: 'Consultation prénatale',
-      date: '2025-01-05',
-      tensionArterielle: '118/78',
-      poids: '67.0',
-      notes: 'Consultation de routine. Tout va bien. Prochain rendez-vous dans 4 semaines.',
-      semaineGrossesse: 20
-    }
-  ]);
+  useEffect(() => {
+    getAllConsultations()
+      .then((data) => setConsultations(Array.isArray(data) ? data : []))
+      .catch(() => setConsultations([]));
+  }, []);
 
-  const filteredConsultations = consultations.filter(c => {
-    const matchSearch = c.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       c.patientId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchType = filterType === 'TOUS' || c.type === filterType;
-    return matchSearch && matchType;
-  });
+  const filteredConsultations = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+
+    return consultations.filter((c) => {
+      const matchSearch =
+        !q || c.patientName.toLowerCase().includes(q) || c.patientId.toLowerCase().includes(q);
+      const matchType = filterType === 'TOUS' || c.type === filterType;
+      return matchSearch && matchType;
+    });
+  }, [consultations, searchTerm, filterType]);
 
   return (
     <div className="p-6 max-w-full">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--dark-brown)' }}>
           Consultations
         </h1>
         <p className="text-sm text-gray-600">
-          Historique de toutes les consultations effectuées
+          Historique de toutes les consultations effectuees
         </p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
@@ -126,9 +66,9 @@ const Consultations = () => {
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-600 mb-1">Prénatales</p>
+              <p className="text-xs text-gray-600 mb-1">Prenatales</p>
               <p className="text-xl font-bold" style={{ color: 'var(--primary-orange)' }}>
-                {consultations.filter(c => c.type === 'Consultation prénatale').length}
+                {consultations.filter((c) => c.type === 'Consultation prénatale').length}
               </p>
             </div>
             <div className="w-10 h-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
@@ -140,9 +80,9 @@ const Consultations = () => {
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-600 mb-1">Échographies</p>
+              <p className="text-xs text-gray-600 mb-1">Echographies</p>
               <p className="text-xl font-bold" style={{ color: 'var(--dark-brown)' }}>
-                {consultations.filter(c => c.type === 'Échographie').length}
+                {consultations.filter((c) => c.type === 'Échographie').length}
               </p>
             </div>
             <div className="w-10 h-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
@@ -156,7 +96,7 @@ const Consultations = () => {
             <div>
               <p className="text-xs text-gray-600 mb-1">Urgences</p>
               <p className="text-xl font-bold text-red-600">
-                {consultations.filter(c => c.type === 'Consultation d\'urgence').length}
+                {consultations.filter((c) => c.type === 'Consultation d\'urgence').length}
               </p>
             </div>
             <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-red-50">
@@ -166,7 +106,6 @@ const Consultations = () => {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
@@ -184,7 +123,7 @@ const Consultations = () => {
           <div>
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
+              onChange={(e) => setFilterType(e.target.value as FilterType)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
             >
               <option value="TOUS">Tous les types</option>
@@ -197,12 +136,10 @@ const Consultations = () => {
         </div>
       </div>
 
-      {/* Consultations List */}
       <div className="space-y-4">
         {filteredConsultations.map((consultation) => (
           <div key={consultation.id} className="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-              {/* Patient Info */}
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--background-soft)' }}>
                   <i className="ri-user-line text-base" style={{ color: 'var(--primary-orange)' }}></i>
@@ -227,25 +164,24 @@ const Consultations = () => {
                 </div>
               </div>
 
-              {/* Consultation Details */}
               <div className="flex-1 lg:max-w-2xl">
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
-                    <div className="text-xs text-gray-600 mb-1">Tension artérielle</div>
+                    <div className="text-xs text-gray-600 mb-1">Tension arterielle</div>
                     <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {consultation.tensionArterielle} mmHg
+                      {consultation.tensionArterielle}
                     </div>
                   </div>
                   <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
                     <div className="text-xs text-gray-600 mb-1">Poids</div>
                     <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {consultation.poids} kg
+                      {consultation.poids}
                     </div>
                   </div>
                 </div>
                 <div className="p-3 rounded-lg border border-gray-200">
                   <div className="text-xs text-gray-600 mb-1 font-medium">Notes et observations</div>
-                  <p className="text-sm text-gray-700">{consultation.notes}</p>
+                  <p className="text-sm text-gray-700">{consultation.notes || 'Aucune note'}</p>
                 </div>
               </div>
             </div>
@@ -256,7 +192,7 @@ const Consultations = () => {
       {filteredConsultations.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
           <i className="ri-inbox-line text-5xl text-gray-300 mb-3"></i>
-          <p className="text-sm text-gray-500">Aucune consultation trouvée</p>
+          <p className="text-sm text-gray-500">Aucune consultation trouvee</p>
         </div>
       )}
     </div>

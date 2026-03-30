@@ -1,45 +1,32 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { login as loginService } from '../../features/auth/services/authService';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const demoAccounts = [
-    {
-      user: { id: '1', name: 'Aminata Diallo', email: 'maman@demo.com', role: 'maman' as const, phone: '+221 77 123 45 67', isValidated: true },
-      password: 'demo1234',
-    },
-    {
-      user: { id: '2', name: 'Dr. Fatou Sow', email: 'pro@demo.com', role: 'professionnel' as const, phone: '+221 76 234 56 78', isValidated: true },
-      password: 'demo1234',
-    },
-    {
-      user: { id: '3', name: 'Administrateur', email: 'admin@demo.com', role: 'admin' as const, isValidated: true },
-      password: 'demo1234',
-    },
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const match = demoAccounts.find(a => a.user.email === email && a.password === password);
-
-    setTimeout(() => {
-      if (match) {
-        login(match.user, 'demo-token-' + match.user.role);
-      } else {
-        setError('Email ou mot de passe incorrect.');
-      }
+    try {
+      const result = await loginService(loginId, password);
+      login(result.user, result.token);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        'Numéro de téléphone / email ou mot de passe incorrect.';
+      setError(message);
+    } finally {
       setLoading(false);
-    }, 700);
+    }
   };
 
   return (
@@ -114,22 +101,22 @@ export default function LoginPage() {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2" style={{ color: 'var(--dark-brown)' }}>
-                Adresse email
+              <label htmlFor="loginId" className="block text-sm font-medium mb-2" style={{ color: 'var(--dark-brown)' }}>
+                Numéro de téléphone ou email
               </label>
               <div className="relative">
-                <i className="ri-mail-line absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <i className="ri-phone-line absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  id="loginId"
+                  name="loginId"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                   className="w-full pl-10 pr-4 h-11 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] transition-all bg-white"
                   style={{ borderColor: '#DDD0C8' }}
-                  placeholder="votre@email.com"
+                  placeholder="+221771234567 ou admin@demo.com"
                 />
               </div>
             </div>
