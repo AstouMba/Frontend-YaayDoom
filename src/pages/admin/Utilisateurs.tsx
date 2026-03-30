@@ -1,27 +1,44 @@
-import { useState } from 'react';
-import { mockUtilisateurs } from '../../mocks/db';
+import { useEffect, useState } from 'react';
+import { getUtilisateurs, updateUserStatus } from '../../features/admin/services/adminService';
 
 type Statut = 'actif' | 'inactif';
+type UserRole = 'maman' | 'professionnel' | 'admin' | 'user';
 
 interface Utilisateur {
-  id: number;
+  id: string;
   nom: string;
   email: string;
   telephone: string;
-  role: 'maman' | 'professionnel';
+  role: UserRole;
   specialite?: string;
   dateInscription: string;
   statut: Statut;
 }
 
 const Utilisateurs = () => {
-  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>(mockUtilisateurs);
-  const [filtreRole, setFiltreRole] = useState<'tous' | 'maman' | 'professionnel'>('tous');
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
+  const [filtreRole, setFiltreRole] = useState<'tous' | 'maman' | 'professionnel' | 'admin'>('tous');
   const [recherche, setRecherche] = useState('');
   const [confirmModal, setConfirmModal] = useState<{ user: Utilisateur; action: 'activer' | 'desactiver' } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await getUtilisateurs();
+        setUtilisateurs(data);
+      } catch {
+        setNotification('Impossible de charger les utilisateurs.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
 
   const utilisateursFiltres = utilisateurs.filter(u => {
     const matchRole = filtreRole === 'tous' || u.role === filtreRole;
@@ -30,12 +47,10 @@ const Utilisateurs = () => {
     return matchRole && matchRecherche;
   });
 
-  // Pagination
   const totalPages = Math.ceil(utilisateursFiltres.length / itemsPerPage);
   const utilisateursPagines = utilisateursFiltres.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-  // Reset page when filters change
-  const handleFilterChange = (newFilter: 'tous' | 'maman' | 'professionnel') => {
+  const handleFilterChange = (newFilter: 'tous' | 'maman' | 'professionnel' | 'admin') => {
     setFiltreRole(newFilter);
     setPage(1);
   };
@@ -55,18 +70,24 @@ const Utilisateurs = () => {
     setConfirmModal({ user, action: user.statut === 'actif' ? 'desactiver' : 'activer' });
   };
 
-  const confirmToggle = () => {
+  const confirmToggle = async () => {
     if (!confirmModal) return;
     const newStatut: Statut = confirmModal.action === 'activer' ? 'actif' : 'inactif';
-    setUtilisateurs(prev => prev.map(u => u.id === confirmModal.user.id ? { ...u, statut: newStatut } : u));
-    setNotification(`Utilisateur ${confirmModal.action === 'activer' ? 'activé' : 'désactivé'} avec succès.`);
-    setTimeout(() => setNotification(null), 3500);
-    setConfirmModal(null);
+
+    try {
+      await updateUserStatus(confirmModal.user.id, newStatut);
+      setUtilisateurs(prev => prev.map(u => u.id === confirmModal.user.id ? { ...u, statut: newStatut } : u));
+      setNotification(`Utilisateur ${confirmModal.action === 'activer' ? 'activé' : 'désactivé'} avec succès.`);
+      setTimeout(() => setNotification(null), 3500);
+      setConfirmModal(null);
+    } catch {
+      setNotification('Mise à jour impossible.');
+      setTimeout(() => setNotification(null), 3500);
+    }
   };
 
   return (
     <div className="p-6">
-      {/* Notification */}
       {notification && (
         <div className="fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white bg-green-600">
           <i className="ri-checkbox-circle-line text-lg"></i>
@@ -79,7 +100,6 @@ const Utilisateurs = () => {
         <p className="text-sm text-gray-500 mt-0.5">Gestion des mamans et professionnels de santé</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
           { label: 'Mamans', value: stats.mamans, icon: 'ri-parent-line', color: 'var(--primary-teal)' },
@@ -100,7 +120,6 @@ const Utilisateurs = () => {
         ))}
       </div>
 
-      {/* Filtres */}
       <div className="bg-white rounded-lg p-4 mb-5 border" style={{ borderColor: '#EAD7C8' }}>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
@@ -110,88 +129,92 @@ const Utilisateurs = () => {
               className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none" />
           </div>
           <div className="flex gap-2">
-            {(['tous', 'maman', 'professionnel'] as const).map(r => (
-              <button key={r} onClick={() => setFiltreRole(r)}
+            {(['tous', 'maman', 'professionnel', 'admin'] as const).map(r => (
+              <button key={r} onClick={() => handleFilterChange(r)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${filtreRole === r ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 style={filtreRole === r ? { backgroundColor: 'var(--primary-teal)' } : {}}>
-                {r === 'tous' ? 'Tous' : r === 'maman' ? 'Mamans' : 'Professionnels'}
+                {r === 'tous' ? 'Tous' : r === 'maman' ? 'Mamans' : r === 'admin' ? 'Admins' : 'Professionnels'}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#EAD7C8' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="border-b" style={{ backgroundColor: 'var(--background-soft)', borderColor: '#EAD7C8' }}>
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Utilisateur</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Téléphone</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Rôle</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Inscription</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Statut</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y" style={{ borderColor: '#f3f4f6' }}>
-              {utilisateursPagines.map(user => (
-                <tr key={user.id} className={`hover:bg-gray-50 transition-colors ${user.statut === 'inactif' ? 'opacity-60' : ''}`}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 flex items-center justify-center rounded-full"
-                        style={{ backgroundColor: user.role === 'maman' ? 'var(--background-soft)' : '#FEE2E2', color: user.role === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)' }}>
-                        <i className={`${user.role === 'maman' ? 'ri-parent-line' : 'ri-stethoscope-line'} text-sm`}></i>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>{user.nom}</p>
-                        {user.specialite && <p className="text-xs text-gray-500">{user.specialite}</p>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{user.email}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{user.telephone}</td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium"
-                      style={{ backgroundColor: user.role === 'maman' ? 'var(--background-soft)' : '#FEE2E2', color: user.role === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)' }}>
-                      {user.role === 'maman' ? 'Maman' : 'Professionnel'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(user.dateInscription).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${user.statut === 'actif' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      <i className={`${user.statut === 'actif' ? 'ri-checkbox-circle-fill' : 'ri-close-circle-line'} text-xs`}></i>
-                      {user.statut === 'actif' ? 'Actif' : 'Inactif'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => handleToggleStatut(user)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${user.statut === 'actif' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                    >
-                      <i className={`${user.statut === 'actif' ? 'ri-forbid-line' : 'ri-check-line'} mr-1`}></i>
-                      {user.statut === 'actif' ? 'Désactiver' : 'Activer'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {loading ? (
+        <div className="bg-white rounded-xl border p-8 text-center" style={{ borderColor: '#EAD7C8' }}>
+          <p className="text-sm text-gray-500">Chargement des utilisateurs...</p>
         </div>
-
-        {utilisateursFiltres.length === 0 && (
-          <div className="p-10 text-center">
-            <i className="ri-user-search-line text-3xl text-gray-300 mb-2"></i>
-            <p className="text-sm text-gray-500">Aucun utilisateur trouvé</p>
+      ) : (
+        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#EAD7C8' }}>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b" style={{ backgroundColor: 'var(--background-soft)', borderColor: '#EAD7C8' }}>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Utilisateur</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Téléphone</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Rôle</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Inscription</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Statut</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: '#f3f4f6' }}>
+                {utilisateursPagines.map(user => (
+                  <tr key={user.id} className={`hover:bg-gray-50 transition-colors ${user.statut === 'inactif' ? 'opacity-60' : ''}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 flex items-center justify-center rounded-full"
+                          style={{ backgroundColor: user.role === 'maman' ? 'var(--background-soft)' : '#FEE2E2', color: user.role === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)' }}>
+                          <i className={`${user.role === 'maman' ? 'ri-parent-line' : user.role === 'admin' ? 'ri-shield-user-line' : 'ri-stethoscope-line'} text-sm`}></i>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>{user.nom}</p>
+                          {user.specialite && <p className="text-xs text-gray-500">{user.specialite}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{user.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{user.telephone}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: user.role === 'maman' ? 'var(--background-soft)' : '#FEE2E2', color: user.role === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)' }}>
+                        {user.role === 'maman' ? 'Maman' : user.role === 'admin' ? 'Admin' : user.role === 'professionnel' ? 'Professionnel' : 'Utilisateur'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {new Date(user.dateInscription).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${user.statut === 'actif' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <i className={`${user.statut === 'actif' ? 'ri-checkbox-circle-fill' : 'ri-close-circle-line'} text-xs`}></i>
+                        {user.statut === 'actif' ? 'Actif' : 'Inactif'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleToggleStatut(user)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${user.statut === 'actif' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                      >
+                        <i className={`${user.statut === 'actif' ? 'ri-forbid-line' : 'ri-check-line'} mr-1`}></i>
+                        {user.statut === 'actif' ? 'Désactiver' : 'Activer'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
 
-      {/* Pagination */}
+          {utilisateursFiltres.length === 0 && (
+            <div className="p-10 text-center">
+              <i className="ri-user-search-line text-3xl text-gray-300 mb-2"></i>
+              <p className="text-sm text-gray-500">Aucun utilisateur trouvé</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4 px-2">
           <p className="text-sm text-gray-500">
@@ -225,7 +248,6 @@ const Utilisateurs = () => {
         </div>
       )}
 
-      {/* Modal confirmation */}
       {confirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full">

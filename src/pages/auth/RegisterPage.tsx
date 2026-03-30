@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { register } from '../../features/auth/services/authService';
 
 type Role = 'maman' | 'professionnel';
 
@@ -77,10 +78,39 @@ export default function RegisterPage() {
     if (!validateStep2()) return;
     
     setLoading(true);
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    setSubmitted(true);
+    
+    // Prepare registration data
+    const registrationData = {
+      role,
+      fullName: form.fullName,
+      phone: form.phone,
+      birthDate: form.birthDate,
+      password: form.password,
+      ...(role === 'professionnel' && {
+        specialty: form.specialty,
+        matricule: form.matricule,
+        healthCenter: form.healthCenter,
+        document: form.document ? {
+          name: form.document.name,
+          type: form.document.type,
+          size: form.document.size
+        } : null
+      })
+    };
+
+    try {
+      // Call the actual API
+      console.log('[DEBUG-REGISTER] Appel de l\'API avec:', registrationData);
+      const response = await register(registrationData);
+      console.log('[DEBUG-REGISTER] Réponse de l\'API:', response);
+      
+      setSubmitted(true);
+    } catch (error) {
+      console.error('[DEBUG-REGISTER] Erreur:', error);
+      setErrors(prev => ({ ...prev, general: 'Une erreur est survenue lors de l\'inscription.' }));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

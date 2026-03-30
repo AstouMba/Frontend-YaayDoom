@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 interface Vaccin {
-  id: number;
+  id: string;
   nom: string;
   age: string;
   description: string;
 }
 
 interface VaccinationRecord {
-  id: number;
+  id: string;
   patientName: string;
   patientId: string;
   bebeNom: string;
@@ -29,28 +29,28 @@ const VaccinationsPro = () => {
 
   // Calendrier vaccinal de référence
   const calendrierVaccinal: Vaccin[] = [
-    { id: 1, nom: 'BCG', age: 'À la naissance', description: 'Vaccin contre la tuberculose' },
-    { id: 2, nom: 'Polio 0', age: 'À la naissance', description: 'Première dose de vaccin contre la poliomyélite' },
-    { id: 3, nom: 'Pentavalent 1', age: '6 semaines', description: 'DTC-HepB-Hib (Diphtérie, Tétanos, Coqueluche, Hépatite B, Haemophilus)' },
-    { id: 4, nom: 'Polio 1', age: '6 semaines', description: 'Deuxième dose de vaccin contre la poliomyélite' },
-    { id: 5, nom: 'Pneumocoque 1', age: '6 semaines', description: 'Première dose contre les infections à pneumocoque' },
-    { id: 6, nom: 'Rotavirus 1', age: '6 semaines', description: 'Première dose contre la gastro-entérite à rotavirus' },
-    { id: 7, nom: 'Pentavalent 2', age: '10 semaines', description: 'DTC-HepB-Hib (2ème dose)' },
-    { id: 8, nom: 'Polio 2', age: '10 semaines', description: 'Troisième dose de vaccin contre la poliomyélite' },
-    { id: 9, nom: 'Pneumocoque 2', age: '10 semaines', description: 'Deuxième dose contre les infections à pneumocoque' },
-    { id: 10, nom: 'Rotavirus 2', age: '10 semaines', description: 'Deuxième dose contre la gastro-entérite à rotavirus' },
-    { id: 11, nom: 'Pentavalent 3', age: '14 semaines', description: 'DTC-HepB-Hib (3ème dose)' },
-    { id: 12, nom: 'Polio 3', age: '14 semaines', description: 'Quatrième dose de vaccin contre la poliomyélite' },
-    { id: 13, nom: 'Pneumocoque 3', age: '14 semaines', description: 'Troisième dose contre les infections à pneumocoque' },
-    { id: 14, nom: 'Rougeole-Rubéole 1', age: '9 mois', description: 'Première dose RR' },
-    { id: 15, nom: 'Fièvre jaune', age: '9 mois', description: 'Vaccin contre la fièvre jaune' },
-    { id: 16, nom: 'Rougeole-Rubéole 2', age: '15 mois', description: 'Deuxième dose RR (rappel)' }
+    { id: 'vac-1', nom: 'BCG', age: 'À la naissance', description: 'Vaccin contre la tuberculose' },
+    { id: 'vac-2', nom: 'Polio 0', age: 'À la naissance', description: 'Première dose de vaccin contre la poliomyélite' },
+    { id: 'vac-3', nom: 'Pentavalent 1', age: '6 semaines', description: 'DTC-HepB-Hib (Diphtérie, Tétanos, Coqueluche, Hépatite B, Haemophilus)' },
+    { id: 'vac-4', nom: 'Polio 1', age: '6 semaines', description: 'Deuxième dose de vaccin contre la poliomyélite' },
+    { id: 'vac-5', nom: 'Pneumocoque 1', age: '6 semaines', description: 'Première dose contre les infections à pneumocoque' },
+    { id: 'vac-6', nom: 'Rotavirus 1', age: '6 semaines', description: 'Première dose contre la gastro-entérite à rotavirus' },
+    { id: 'vac-7', nom: 'Pentavalent 2', age: '10 semaines', description: 'DTC-HepB-Hib (2ème dose)' },
+    { id: 'vac-8', nom: 'Polio 2', age: '10 semaines', description: 'Troisième dose de vaccin contre la poliomyélite' },
+    { id: 'vac-9', nom: 'Pneumocoque 2', age: '10 semaines', description: 'Deuxième dose contre les infections à pneumocoque' },
+    { id: 'vac-10', nom: 'Rotavirus 2', age: '10 semaines', description: 'Deuxième dose contre la gastro-entérite à rotavirus' },
+    { id: 'vac-11', nom: 'Pentavalent 3', age: '14 semaines', description: 'DTC-HepB-Hib (3ème dose)' },
+    { id: 'vac-12', nom: 'Polio 3', age: '14 semaines', description: 'Quatrième dose de vaccin contre la poliomyélite' },
+    { id: 'vac-13', nom: 'Pneumocoque 3', age: '14 semaines', description: 'Troisième dose contre les infections à pneumocoque' },
+    { id: 'vac-14', nom: 'Rougeole-Rubéole 1', age: '9 mois', description: 'Première dose RR' },
+    { id: 'vac-15', nom: 'Fièvre jaune', age: '9 mois', description: 'Vaccin contre la fièvre jaune' },
+    { id: 'vac-16', nom: 'Rougeole-Rubéole 2', age: '15 mois', description: 'Deuxième dose RR (rappel)' }
   ];
 
   // Mock data - Vaccinations
   const [vaccinations] = useState<VaccinationRecord[]>([
     {
-      id: 1,
+      id: 'vr-1',
       patientName: 'Aïssatou Ba',
       patientId: 'MAM-2025-001',
       bebeNom: 'Moussa Ba',
@@ -62,7 +62,7 @@ const VaccinationsPro = () => {
       notes: 'Vaccin administré sans complications. Bébé en bonne santé.'
     },
     {
-      id: 2,
+      id: 'vr-2',
       patientName: 'Khady Faye',
       patientId: 'MAM-2025-002',
       bebeNom: 'Fatou Faye',
@@ -74,7 +74,7 @@ const VaccinationsPro = () => {
       notes: 'Première dose RR administrée. Rappel prévu à 15 mois.'
     },
     {
-      id: 3,
+      id: 'vr-3',
       patientName: 'Coumba Diop',
       patientId: 'MAM-2025-003',
       bebeNom: 'Ibrahima Diop',
@@ -86,7 +86,7 @@ const VaccinationsPro = () => {
       notes: 'Rendez-vous prévu pour la première dose du Pentavalent.'
     },
     {
-      id: 4,
+      id: 'vr-4',
       patientName: 'Mariama Ndiaye',
       patientId: 'MAM-2025-005',
       bebeNom: 'Aminata Ndiaye',
@@ -97,7 +97,7 @@ const VaccinationsPro = () => {
       notes: 'Vaccin en retard. Contacter la maman pour planifier le rendez-vous.'
     },
     {
-      id: 5,
+      id: 'vr-5',
       patientName: 'Fatou Sall',
       patientId: 'MAM-2025-004',
       bebeNom: 'Omar Sall',

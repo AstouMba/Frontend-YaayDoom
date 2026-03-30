@@ -4,7 +4,7 @@ import { mockUtilisateurs } from '../../mocks/db';
 type Statut = 'actif' | 'inactif';
 
 interface Utilisateur {
-  id: number;
+  id: string;
   nom: string;
   email: string;
   telephone: string;

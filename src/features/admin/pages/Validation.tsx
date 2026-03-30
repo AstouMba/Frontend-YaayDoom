@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { mockProfessionnelsEnAttente } from '../../mocks/db';
 
 interface Professionnel {
-  id: number;
+  id: string;
   nom: string;
   email: string;
   telephone: string;
@@ -24,13 +24,13 @@ const Validation = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleApprouver = (id: number) => {
+  const handleApprouver = (id: string) => {
     setProfessionnels(prev => prev.filter(p => p.id !== id));
     setShowDocumentModal(false);
     showNotif('success', 'Professionnel approuvé avec succès.');
   };
 
-  const handleRejeter = (id: number) => {
+  const handleRejeter = (id: string) => {
     setProfessionnels(prev => prev.filter(p => p.id !== id));
     setShowDocumentModal(false);
     showNotif('error', 'Demande d\'inscription rejetée.');

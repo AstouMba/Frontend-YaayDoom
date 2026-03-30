@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import QRCard from '../../components/QRCard';
 import ModalGrossesse from '../../components/ModalGrossesse';
+import { createGrossesse, getGrossesse } from '../../features/maman/services/mamanService';
 
 type GrossesseStatut = 'AUCUNE' | 'EN_ATTENTE' | 'VALIDEE';
 
@@ -13,18 +14,45 @@ export default function DashboardMaman() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const [grossesseStatut, setGrossesseStatut] = useState<GrossesseStatut>('VALIDEE');
+  const [grossesseStatut, setGrossesseStatut] = useState<GrossesseStatut>('AUCUNE');
+  const [semaineActuelle, setSemaineActuelle] = useState(0);
 
-  const semaineActuelle = 26;
+  const loadGrossesse = async () => {
+    try {
+      const grossesse = await getGrossesse();
+      if (!grossesse) {
+        setGrossesseStatut('AUCUNE');
+        setSemaineActuelle(0);
+        return;
+      }
 
-  const handleCreateGrossesse = async (_data: unknown) => {
+      setSemaineActuelle(grossesse.semaineGrossesse || 0);
+      if (grossesse.statut === 'EN_ATTENTE') {
+        setGrossesseStatut('EN_ATTENTE');
+      } else {
+        setGrossesseStatut('VALIDEE');
+      }
+    } catch {
+      setGrossesseStatut('AUCUNE');
+      setSemaineActuelle(0);
+    }
+  };
+
+  useEffect(() => {
+    loadGrossesse();
+  }, []);
+
+  const handleCreateGrossesse = async (data: any) => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setIsModalOpen(false);
-    setGrossesseStatut('EN_ATTENTE');
-    setSuccessMessage('Votre déclaration de grossesse a été enregistrée avec succès !');
-    setLoading(false);
-    setTimeout(() => setSuccessMessage(''), 5000);
+    try {
+      await createGrossesse(data);
+      setIsModalOpen(false);
+      await loadGrossesse();
+      setSuccessMessage('Votre declaration de grossesse a ete enregistree avec succes.');
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const userName = user?.name?.split(' ')[0] || 'vous';
@@ -104,7 +132,7 @@ export default function DashboardMaman() {
           {/* Carte QR */}
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <h2 className="text-lg font-bold text-gray-800 mb-4">Ma carte de santé</h2>
-            <QRCard userName={user?.name || 'Aminata Diallo'} userId="YD-2024-001234" />
+            <QRCard userName={user?.name || 'Aminata Diallo'} userId={user?.id || 'YD-2024-001234'} />
           </div>
 
           {/* Accès rapides */}

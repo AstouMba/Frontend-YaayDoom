@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import {
+  addVaccination,
+  createConsultation,
+  registerAccouchement,
+} from '../../features/professionnel/services/professionnelService';
 
 interface PatientData {
   id: string;
@@ -55,6 +60,8 @@ const ConsultationPatient = () => {
   const [showConsultationModal, setShowConsultationModal] = useState(false);
   const [showAccouchementModal, setShowAccouchementModal] = useState(false);
   const [showVaccinModal, setShowVaccinModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState('');
 
   const [consultationForm, setConsultationForm] = useState<Consultation>({
     type: 'Consultation prénatale',
@@ -87,44 +94,99 @@ const ConsultationPatient = () => {
     return null;
   }
 
-  const handleSubmitConsultation = (e: React.FormEvent) => {
+  const handleSubmitConsultation = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Consultation ajoutée:', consultationForm, 'pour', patientData.name);
-    setShowConsultationModal(false);
-    setConsultationForm({
-      type: 'Consultation prénatale',
-      date: '',
-      notes: '',
-      tensionArterielle: '',
-      poids: ''
-    });
+    setSubmitting(true);
+    setFeedback('');
+
+    try {
+      await createConsultation(patientData.id, {
+        type: consultationForm.type,
+        date: consultationForm.date,
+        notes: [
+          consultationForm.notes,
+          consultationForm.tensionArterielle ? `TA: ${consultationForm.tensionArterielle}` : null,
+          consultationForm.poids ? `Poids: ${consultationForm.poids} kg` : null,
+        ]
+          .filter(Boolean)
+          .join(' | '),
+      });
+
+      setShowConsultationModal(false);
+      setConsultationForm({
+        type: 'Consultation prénatale',
+        date: '',
+        notes: '',
+        tensionArterielle: '',
+        poids: '',
+      });
+      setFeedback('Consultation enregistree avec succes.');
+    } catch {
+      setFeedback('Echec de l enregistrement de la consultation.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSubmitAccouchement = (e: React.FormEvent) => {
+  const handleSubmitAccouchement = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Accouchement enregistré:', accouchementForm, 'pour', patientData.name);
-    setShowAccouchementModal(false);
-    setAccouchementForm({
-      dateAccouchement: '',
-      heureAccouchement: '',
-      typeAccouchement: 'Voie basse',
-      sexeBebe: 'Garçon',
-      poidsBebe: '',
-      tailleBebe: '',
-      notes: ''
-    });
+    setSubmitting(true);
+    setFeedback('');
+
+    try {
+      await registerAccouchement(patientData.id, {
+        nom: patientData.bebe?.nom || `Bebe de ${patientData.name}`,
+        date_naissance: accouchementForm.dateAccouchement,
+        sexe: accouchementForm.sexeBebe === 'Garçon' ? 'M' : 'F',
+        poids: accouchementForm.poidsBebe || null,
+        taille: accouchementForm.tailleBebe || null,
+      });
+
+      setShowAccouchementModal(false);
+      setAccouchementForm({
+        dateAccouchement: '',
+        heureAccouchement: '',
+        typeAccouchement: 'Voie basse',
+        sexeBebe: 'Garçon',
+        poidsBebe: '',
+        tailleBebe: '',
+        notes: '',
+      });
+      setFeedback('Accouchement enregistre avec succes.');
+    } catch {
+      setFeedback('Echec de l enregistrement de l accouchement.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSubmitVaccin = (e: React.FormEvent) => {
+  const handleSubmitVaccin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Vaccin ajouté:', vaccinForm, 'pour', patientData.name);
-    setShowVaccinModal(false);
-    setVaccinForm({
-      nomVaccin: 'BCG',
-      dateAdministration: '',
-      prochainRappel: '',
-      notes: ''
-    });
+    setSubmitting(true);
+    setFeedback('');
+
+    try {
+      await addVaccination(patientData.id, {
+        bebe_id: patientData.bebe?.id,
+        nom_vaccin: vaccinForm.nomVaccin,
+        date_vaccination: vaccinForm.dateAdministration,
+        prochaine_dose: vaccinForm.prochainRappel || null,
+        notes: vaccinForm.notes || null,
+      });
+
+      setShowVaccinModal(false);
+      setVaccinForm({
+        nomVaccin: 'BCG',
+        dateAdministration: '',
+        prochainRappel: '',
+        notes: '',
+      });
+      setFeedback('Vaccin ajoute avec succes.');
+    } catch {
+      setFeedback('Echec de l enregistrement du vaccin.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -181,6 +243,11 @@ const ConsultationPatient = () => {
             <span className="font-bold text-base">Scan réussi ! Dossier de la patiente</span>
           </div>
         </div>
+        {feedback && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-blue-800 text-sm font-medium">
+            {feedback}
+          </div>
+        )}
 
         {/* Patient Info Card */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -412,10 +479,11 @@ const ConsultationPatient = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer"
                   style={{ backgroundColor: 'var(--primary-orange)' }}
                 >
-                  Enregistrer
+                  {submitting ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>
             </form>
@@ -578,10 +646,11 @@ const ConsultationPatient = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer"
                   style={{ backgroundColor: 'var(--primary-teal)' }}
                 >
-                  Enregistrer
+                  {submitting ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>
             </form>
@@ -684,10 +753,11 @@ const ConsultationPatient = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="flex-1 px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer"
                   style={{ backgroundColor: 'var(--primary-orange)' }}
                 >
-                  Enregistrer
+                  {submitting ? 'Enregistrement...' : 'Enregistrer'}
                 </button>
               </div>
             </form>

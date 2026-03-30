@@ -1,62 +1,100 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import {
+  getAllConsultations,
+  getGrossesses,
+  rejectGrossesse,
+  validateGrossesse,
+} from '../../features/professionnel/services/professionnelService';
 
-interface Grossesse {
-  id: number;
-  patientName: string;
+interface GrossesseItem {
+  id: string;
+  rawId: string;
+  mamanNom: string;
   email: string;
-  phone: string;
-  dateDernieresRegles: string;
+  numeroTelephone: string;
   semaineGrossesse: number;
-  statut: 'EN_ATTENTE' | 'VALIDÉ';
-}
-
-interface Patiente {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  semaineGrossesse: number;
-  dateAccouchementPrevue: string;
-  dernierRdv: string;
-  prochainRdv: string;
+  statut: 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE' | 'ANNULEE';
+  mamanId: string;
 }
 
 const DashboardPro = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'attente' | 'suivies'>('attente');
-  const [loading, setLoading] = useState(false);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [grossesses, setGrossesses] = useState<GrossesseItem[]>([]);
+  const [consultationsCount, setConsultationsCount] = useState(0);
 
-  // Mock data
-  const [grossessesEnAttente, setGrossessesEnAttente] = useState<Grossesse[]>([
-    { id: 1, patientName: 'Aminata Diallo', email: 'aminata@email.com', phone: '+221 77 123 45 67', dateDernieresRegles: '2024-10-15', semaineGrossesse: 12, statut: 'EN_ATTENTE' },
-    { id: 2, patientName: 'Fatou Sall', email: 'fatou@email.com', phone: '+221 76 234 56 78', dateDernieresRegles: '2024-11-20', semaineGrossesse: 8, statut: 'EN_ATTENTE' },
-  ]);
+  const loadData = async () => {
+    const [grossessesData, consultations] = await Promise.all([
+      getGrossesses(),
+      getAllConsultations(),
+    ]);
 
-  const [patientesSuivies] = useState<Patiente[]>([
-    { id: 4, name: 'Aïssatou Ba', email: 'aissatou@email.com', phone: '+221 77 456 78 90', semaineGrossesse: 24, dateAccouchementPrevue: '2025-08-15', dernierRdv: '2025-01-05', prochainRdv: '2025-02-05' },
-    { id: 5, name: 'Khady Faye', email: 'khady@email.com', phone: '+221 76 567 89 01', semaineGrossesse: 32, dateAccouchementPrevue: '2025-06-20', dernierRdv: '2025-01-10', prochainRdv: '2025-01-24' },
-  ]);
-
-  const handleValider = async (id: number) => {
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 500));
-    setGrossessesEnAttente(prev => prev.map(g => g.id === id ? { ...g, statut: 'VALIDÉ' } : g));
-    setLoading(false);
+    setGrossesses(grossessesData || []);
+    setConsultationsCount(Array.isArray(consultations) ? consultations.length : 0);
   };
 
-  const handleRejeter = (id: number) => {
-    if (confirm('Voulez-vous rejeter cette grossesse ?')) {
-      setGrossessesEnAttente(prev => prev.filter(g => g.id !== id));
+  useEffect(() => {
+    loadData().catch(() => {
+      setGrossesses([]);
+      setConsultationsCount(0);
+    });
+  }, []);
+
+  const grossessesEnAttente = useMemo(
+    () => grossesses.filter((g) => g.statut === 'EN_ATTENTE'),
+    [grossesses]
+  );
+
+  const patientesSuivies = useMemo(
+    () => grossesses.filter((g) => g.statut === 'VALIDEE' || g.statut === 'TERMINEE'),
+    [grossesses]
+  );
+
+  const filteredAttente = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return grossessesEnAttente;
+    return grossessesEnAttente.filter(
+      (g) => g.mamanNom.toLowerCase().includes(q) || String(g.mamanId).includes(q)
+    );
+  }, [grossessesEnAttente, searchTerm]);
+
+  const filteredSuivies = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return patientesSuivies;
+    return patientesSuivies.filter(
+      (g) => g.mamanNom.toLowerCase().includes(q) || String(g.mamanId).includes(q)
+    );
+  }, [patientesSuivies, searchTerm]);
+
+  const handleValider = async (id: string) => {
+    setLoadingId(id);
+    try {
+      await validateGrossesse(id);
+      await loadData();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleRejeter = async (id: string) => {
+    if (!confirm('Voulez-vous rejeter cette grossesse ?')) return;
+
+    setLoadingId(id);
+    try {
+      await rejectGrossesse(id);
+      await loadData();
+    } finally {
+      setLoadingId(null);
     }
   };
 
   return (
     <div className="p-6 max-w-full">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Bonjour, {user?.name}</h1>
@@ -71,7 +109,6 @@ const DashboardPro = () => {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
           <div className="flex items-center gap-4">
@@ -80,7 +117,7 @@ const DashboardPro = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">En attente</p>
-              <p className="text-2xl font-bold text-orange-600">{grossessesEnAttente.filter(g => g.statut === 'EN_ATTENTE').length}</p>
+              <p className="text-2xl font-bold text-orange-600">{grossessesEnAttente.length}</p>
             </div>
           </div>
         </div>
@@ -101,14 +138,13 @@ const DashboardPro = () => {
               <i className="ri-calendar-check-line text-blue-600 text-xl"></i>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Consultations mois</p>
-              <p className="text-2xl font-bold text-blue-600">24</p>
+              <p className="text-sm text-gray-500">Consultations total</p>
+              <p className="text-2xl font-bold text-blue-600">{consultationsCount}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2 mb-4 bg-white rounded-xl p-1 shadow-sm border border-gray-100">
         <button
           onClick={() => setActiveTab('attente')}
@@ -126,7 +162,6 @@ const DashboardPro = () => {
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-gray-100">
         <div className="relative">
           <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -140,7 +175,6 @@ const DashboardPro = () => {
         </div>
       </div>
 
-      {/* Content */}
       {activeTab === 'attente' && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
@@ -155,37 +189,36 @@ const DashboardPro = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {grossessesEnAttente.map(g => (
+                {filteredAttente.map((g) => (
                   <tr key={g.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                           <i className="ri-user-line text-orange-600"></i>
                         </div>
-                        <span className="font-medium text-gray-800">{g.patientName}</span>
+                        <span className="font-medium text-gray-800">{g.mamanNom}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{g.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{g.numeroTelephone || '-'}</td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-medium">{g.semaineGrossesse} SA</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${g.statut === 'VALIDÉ' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {g.statut}
-                      </span>
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">EN_ATTENTE</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={() => handleValider(g.id)}
-                          disabled={loading}
+                          disabled={loadingId === g.id}
                           className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 disabled:opacity-50"
                         >
-                          {loading ? <i className="ri-loader-2-line animate-spin"></i> : <><i className="ri-check-line mr-1"></i>Valider</>}
+                          {loadingId === g.id ? <i className="ri-loader-2-line animate-spin"></i> : <><i className="ri-check-line mr-1"></i>Valider</>}
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleRejeter(g.id)}
-                          className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600"
+                          disabled={loadingId === g.id}
+                          className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 disabled:opacity-50"
                         >
                           <i className="ri-close-line mr-1"></i>Rejeter
                         </button>
@@ -201,7 +234,7 @@ const DashboardPro = () => {
 
       {activeTab === 'suivies' && (
         <div className="grid gap-4">
-          {patientesSuivies.map(p => (
+          {filteredSuivies.map((p) => (
             <div key={p.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -209,8 +242,8 @@ const DashboardPro = () => {
                     <i className="ri-user-line text-teal-600 text-xl"></i>
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-800">{p.name}</h3>
-                    <p className="text-sm text-gray-500">{p.email}</p>
+                    <h3 className="font-bold text-gray-800">{p.mamanNom}</h3>
+                    <p className="text-sm text-gray-500">ID: MAM-{p.mamanId}</p>
                   </div>
                 </div>
                 <div className="flex gap-4 text-center">
@@ -218,17 +251,19 @@ const DashboardPro = () => {
                     <p className="text-lg font-bold text-orange-600">{p.semaineGrossesse}</p>
                     <p className="text-xs text-gray-500">SA</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-xl">
-                    <p className="text-sm font-medium text-gray-800">{new Date(p.prochainRdv).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
-                    <p className="text-xs text-gray-500">Prochain RDV</p>
-                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600">
-                    <i className="ri-stethoscope-line mr-1"></i>Consultation
+                  <button
+                    onClick={() => navigate('/dashboard-pro/consultations')}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600"
+                  >
+                    <i className="ri-stethoscope-line mr-1"></i>Consultations
                   </button>
-                  <button className="px-4 py-2 border border-teal-600 text-teal-600 rounded-lg text-sm font-medium hover:bg-teal-50">
-                    <i className="ri-syringe-line mr-1"></i>Vaccin
+                  <button
+                    onClick={() => navigate('/dashboard-pro/vaccinations')}
+                    className="px-4 py-2 border border-teal-600 text-teal-600 rounded-lg text-sm font-medium hover:bg-teal-50"
+                  >
+                    <i className="ri-syringe-line mr-1"></i>Vaccins
                   </button>
                 </div>
               </div>

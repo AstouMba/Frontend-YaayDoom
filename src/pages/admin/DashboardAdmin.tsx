@@ -1,21 +1,43 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart, BarController, BarElement, CategoryScale, LinearScale,
   DoughnutController, ArcElement, Tooltip, Legend,
 } from 'chart.js';
-import { mockStats } from '../../mocks/db';
+import { getStatistiques } from '../../features/admin/services/adminService';
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, DoughnutController, ArcElement, Tooltip, Legend);
 
 const DashboardAdmin = () => {
   const navigate = useNavigate();
+  const [statsData, setStatsData] = useState({
+    totalMamans: 0,
+    totalProfessionnels: 0,
+    grossessesActives: 0,
+    professionnelsEnAttente: 0,
+    grossessesParMois: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    labelsParMois: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
+  });
   const barRef = useRef<HTMLCanvasElement>(null);
   const doughnutRef = useRef<HTMLCanvasElement>(null);
   const barInstance = useRef<Chart | null>(null);
   const doughnutInstance = useRef<Chart | null>(null);
 
   useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const stats = await getStatistiques();
+        setStatsData((prev) => ({
+          ...prev,
+          ...stats,
+        }));
+      } catch {
+        // keep defaults
+      }
+    };
+
+    loadStats();
+
     if (barRef.current) {
       barInstance.current?.destroy();
       const ctx = barRef.current.getContext('2d');
@@ -23,8 +45,8 @@ const DashboardAdmin = () => {
         barInstance.current = new Chart(ctx, {
           type: 'bar',
           data: {
-            labels: mockStats.labelsParMois,
-            datasets: [{ label: 'Nouvelles grossesses', data: mockStats.grossessesParMois, backgroundColor: '#2F8F83', borderRadius: 5 }],
+            labels: statsData.labelsParMois,
+            datasets: [{ label: 'Nouvelles grossesses', data: statsData.grossessesParMois, backgroundColor: '#2F8F83', borderRadius: 5 }],
           },
           options: {
             responsive: true, maintainAspectRatio: false,
@@ -42,20 +64,20 @@ const DashboardAdmin = () => {
           type: 'doughnut',
           data: {
             labels: ['Mamans', 'Professionnels'],
-            datasets: [{ data: [mockStats.totalMamans, mockStats.totalProfessionnels], backgroundColor: ['#2F8F83', '#E46A3C'], borderWidth: 0 }],
+            datasets: [{ data: [statsData.totalMamans, statsData.totalProfessionnels], backgroundColor: ['#2F8F83', '#E46A3C'], borderWidth: 0 }],
           },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } },
         });
       }
     }
     return () => { barInstance.current?.destroy(); doughnutInstance.current?.destroy(); };
-  }, []);
+  }, [statsData.grossessesParMois, statsData.labelsParMois, statsData.totalMamans, statsData.totalProfessionnels]);
 
   const statsCards = [
-    { label: 'Total Mamans', value: mockStats.totalMamans, trend: '+12 ce mois', icon: 'ri-parent-line', color: 'var(--primary-teal)' },
-    { label: 'Professionnels', value: mockStats.totalProfessionnels, trend: '+3 ce mois', icon: 'ri-stethoscope-line', color: 'var(--primary-orange)' },
-    { label: 'Grossesses actives', value: mockStats.grossessesActives, trend: '+8 ce mois', icon: 'ri-heart-pulse-line', color: 'var(--primary-teal)' },
-    { label: 'En attente', value: mockStats.professionnelsEnAttente, trend: 'validation requise', icon: 'ri-time-line', color: 'var(--primary-orange)' },
+    { label: 'Total Mamans', value: statsData.totalMamans, trend: 'à jour', icon: 'ri-parent-line', color: 'var(--primary-teal)' },
+    { label: 'Professionnels', value: statsData.totalProfessionnels, trend: 'à jour', icon: 'ri-stethoscope-line', color: 'var(--primary-orange)' },
+    { label: 'Grossesses actives', value: statsData.grossessesActives, trend: 'à jour', icon: 'ri-heart-pulse-line', color: 'var(--primary-teal)' },
+    { label: 'En attente', value: statsData.professionnelsEnAttente, trend: 'validation requise', icon: 'ri-time-line', color: 'var(--primary-orange)' },
   ];
 
   const activiteRecente = [
@@ -130,7 +152,7 @@ const DashboardAdmin = () => {
             className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium border cursor-pointer hover:bg-gray-50 whitespace-nowrap transition-all"
             style={{ borderColor: 'var(--primary-teal)', color: 'var(--primary-teal)' }}>
             <i className="ri-user-add-line mr-1.5"></i>
-            Voir les demandes ({mockStats.professionnelsEnAttente})
+            Voir les demandes ({statsData.professionnelsEnAttente})
           </button>
         </div>
 

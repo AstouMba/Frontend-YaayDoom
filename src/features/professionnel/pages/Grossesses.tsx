@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 interface Grossesse {
-  id: number;
+  id: string;
   patientName: string;
   patientId: string;
   statut: 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE';
@@ -22,7 +22,7 @@ const Grossesses = () => {
   // Mock data - Grossesses
   const [grossesses, setGrossesses] = useState<Grossesse[]>([
     {
-      id: 1,
+      id: 'g-1',
       patientName: 'Aïssatou Ba',
       patientId: 'MAM-2025-001',
       statut: 'VALIDEE',
@@ -34,7 +34,7 @@ const Grossesses = () => {
       dateDeclaration: '2024-08-15'
     },
     {
-      id: 2,
+      id: 'g-2',
       patientName: 'Khady Faye',
       patientId: 'MAM-2025-002',
       statut: 'VALIDEE',
@@ -46,7 +46,7 @@ const Grossesses = () => {
       dateDeclaration: '2024-06-10'
     },
     {
-      id: 3,
+      id: 'g-3',
       patientName: 'Coumba Diop',
       patientId: 'MAM-2025-003',
       statut: 'EN_ATTENTE',
@@ -58,7 +58,7 @@ const Grossesses = () => {
       dateDeclaration: '2024-10-05'
     },
     {
-      id: 4,
+      id: 'g-4',
       patientName: 'Fatou Sall',
       patientId: 'MAM-2025-004',
       statut: 'EN_ATTENTE',
@@ -70,7 +70,7 @@ const Grossesses = () => {
       dateDeclaration: '2024-12-01'
     },
     {
-      id: 5,
+      id: 'g-5',
       patientName: 'Mariama Ndiaye',
       patientId: 'MAM-2025-005',
       statut: 'VALIDEE',
@@ -83,7 +83,7 @@ const Grossesses = () => {
     }
   ]);
 
-  const handleValider = (id: number) => {
+  const handleValider = (id: string) => {
     setGrossesses(prev => prev.map(g => 
       g.id === id ? { ...g, statut: 'VALIDEE' as const } : g
     ));

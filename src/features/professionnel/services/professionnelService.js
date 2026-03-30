@@ -1,153 +1,272 @@
 /**
- * Professionnel Service - API pour professionnels de santé
+ * Professionnel Service - API pour professionnels de sante
  */
 import { api } from '../../../core/api/api';
 
-const delay = (ms = 600) => new Promise((resolve) => setTimeout(resolve, ms));
+const getCurrentUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('yaydoom_user') || 'null');
+  } catch {
+    return null;
+  }
+};
 
-// Mock data
-const mockGrossesses = [
-  { id: 'g-001', mamanNom: 'Aminata Diallo', mamanId: 'u-001', semaineGrossesse: 26, statut: 'VALIDEE', dateDernieresRegles: '2024-09-10', numeroTelephone: '+221 77 123 45 67' },
-  { id: 'g-002', mamanNom: 'Fatou Sall', mamanId: 'u-004', semaineGrossesse: 10, statut: 'EN_ATTENTE', dateDernieresRegles: '2025-01-05', numeroTelephone: '+221 76 234 56 78' },
-  { id: 'g-003', mamanNom: 'Mariama Sow', mamanId: 'u-005', semaineGrossesse: 32, statut: 'VALIDEE', dateDernieresRegles: '2024-06-15', numeroTelephone: '+221 77 345 67 89' },
-];
+const weekFromDate = (startDate) => {
+  if (!startDate) return 0;
+  const start = new Date(startDate);
+  const now = new Date();
+  const diffMs = now.getTime() - start.getTime();
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7)));
+};
 
-const mockPatients = [
-  { id: 'p-001', nom: 'Aminata Jr', dateDenaissance: '2024-03-15', sexe: 'Fille', nomMaman: 'Aminata Diallo', telephone: '+221 77 123 45 67' },
-  { id: 'p-002', nom: 'Moussa Jr', dateDenaissance: '2024-09-20', sexe: 'Garçon', nomMaman: 'Moussa Diop', telephone: '+221 76 234 56 78' },
-  { id: 'p-003', nom: 'Fatou Jr', dateDenaissance: '2024-06-10', sexe: 'Fille', nomMaman: 'Fatou Ba', telephone: '+221 77 345 67 89' },
-];
+const grossesseStatutUi = (status) => {
+  if (status === 'en_cours') return 'VALIDEE';
+  if (status === 'terminee') return 'TERMINEE';
+  if (status === 'annulee') return 'ANNULEE';
+  return 'EN_ATTENTE';
+};
 
-const mockConsultations = [
-  { id: 'c-001', patientId: 'p-001', patientNom: 'Aminata Jr', type: 'routine', date: '2025-03-15', poids: '9.1', taille: '74', temperature: '37.2', tension: '110/70', diagnostic: 'En bonne santé', traitement: 'Aucun', patientId: 'p-001' },
-  { id: 'c-002', patientId: 'p-002', patientNom: 'Moussa Jr', type: 'vaccination', date: '2025-03-20', poids: '11.2', taille: '80', temperature: '36.8', tension: '100/60', patientId: 'p-002' },
-  { id: 'c-003', patientId: 'p-003', patientNom: 'Fatou Jr', type: 'suivi', date: '2025-03-22', poids: '10.5', taille: '77', temperature: '37.0', patientId: 'p-003' },
-];
-
-const mockVaccinations = [
-  { id: 'v-001', patientId: 'p-001', patientNom: 'Aminata Jr', vaccin: 'Méningite A', age: '12 mois', date: '2025-03-15', statut: 'complete', lot: 'MEN-2024-001' },
-  { id: 'v-002', patientId: 'p-002', patientNom: 'Moussa Jr', vaccin: 'Rappel DTC', age: '18 mois', date: '2025-04-01', statut: 'pending', lot: '' },
-  { id: 'v-003', patientId: 'p-003', patientNom: 'Fatou Jr', vaccin: 'Pneumocoque', age: '15 mois', date: '2025-03-20', statut: 'pending', lot: '' },
-];
-
-// ============ PATIENTS ============
+const vaccinationStatus = (v) => {
+  if (v.date_vaccination) return 'ADMINISTRE';
+  if (!v.prochaine_dose) return 'A_VENIR';
+  const today = new Date().toISOString().slice(0, 10);
+  return v.prochaine_dose < today ? 'EN_RETARD' : 'A_VENIR';
+};
 
 export const getPatients = async () => {
-  await delay();
-  return mockPatients;
+  const { data } = await api.get('/bebes');
+  const bebes = Array.isArray(data) ? data : [];
+
+  return bebes.map((b) => ({
+    id: `p-${String(b.id)}`,
+    bebeId: String(b.id),
+    mamanId: String(b.maman_id),
+    nom: b.nom,
+    dateDenaissance: b.date_naissance,
+    sexe: b.sexe === 'M' ? 'Garcon' : 'Fille',
+    nomMaman: `Maman #${b.maman_id}`,
+    telephone: '-',
+  }));
 };
 
 export const getPatientById = async (id) => {
-  await delay();
-  return mockPatients.find(p => p.id === id);
+  const patients = await getPatients();
+  return patients.find((p) => p.id === id || String(p.bebeId) === String(id)) || null;
 };
 
 export const getPatientByQRCode = async (code) => {
-  await delay();
-  // Simulate QR code lookup
-  const patient = mockPatients.find(p => p.id === code || p.nom.includes(code));
-  if (patient) return patient;
-  throw new Error('Patient non trouvé');
+  const value = String(code).trim().toLowerCase();
+  const patients = await getPatients();
+
+  const byPatient = patients.find(
+    (p) =>
+      p.id.toLowerCase() === value ||
+      String(p.bebeId) === value ||
+      p.nom.toLowerCase().includes(value)
+  );
+
+  if (byPatient) return byPatient;
+
+  const grossesses = await getGrossesses();
+  const byGrossesse = grossesses.find(
+    (g) => String(g.rawId) === value || g.id.toLowerCase() === value || String(g.mamanId) === value
+  );
+
+  if (byGrossesse) {
+    return {
+      id: `m-${byGrossesse.mamanId}`,
+      mamanId: byGrossesse.mamanId,
+      nom: byGrossesse.mamanNom,
+      dateDenaissance: null,
+      sexe: '-',
+      nomMaman: byGrossesse.mamanNom,
+      telephone: byGrossesse.numeroTelephone || '-',
+      grossesse: byGrossesse,
+    };
+  }
+
+  throw new Error('Patient non trouve');
 };
 
-// ============ GROSSESSES ============
-
 export const getGrossesses = async () => {
-  await delay();
-  return mockGrossesses;
+  const { data } = await api.get('/grossesses');
+  const grossesses = Array.isArray(data) ? data : [];
+
+  return grossesses.map((g) => ({
+    id: `g-${String(g.id)}`,
+    rawId: String(g.id),
+    mamanNom: `Maman #${g.maman_id}`,
+    mamanId: String(g.maman_id),
+    semaineGrossesse: weekFromDate(g.date_debut),
+    statut: grossesseStatutUi(g.statut),
+    dateDernieresRegles: g.date_debut,
+    datePresumeAccouchement: g.date_fin_prevue,
+    numeroTelephone: '-',
+    email: '-',
+    notes: g.notes || '',
+    dateDeclaration: g.created_at,
+  }));
 };
 
 export const getGrossesseById = async (id) => {
-  await delay();
-  return mockGrossesses.find(g => g.id === id);
+  const rawId = String(id).replace('g-', '');
+  const { data } = await api.get(`/grossesses/${rawId}`);
+  return data;
 };
 
 export const validateGrossesse = async (id) => {
-  await delay();
-  return { id, statut: 'VALIDEE' };
+  const rawId = String(id).replace('g-', '');
+  const { data } = await api.patch(`/grossesses/${rawId}`, { statut: 'en_cours' });
+  return data;
+};
+
+export const rejectGrossesse = async (id) => {
+  const rawId = String(id).replace('g-', '');
+  const { data } = await api.patch(`/grossesses/${rawId}`, { statut: 'annulee' });
+  return data;
 };
 
 export const getGrossessesEnAttente = async () => {
-  await delay();
-  return mockGrossesses.filter(g => g.statut === 'EN_ATTENTE');
+  const grossesses = await getGrossesses();
+  return grossesses.filter((g) => g.statut === 'EN_ATTENTE');
 };
 
-// ============ CONSULTATIONS ============
+export const getConsultations = async (mamanId) => {
+  const [consultationsRes, grossesses] = await Promise.all([api.get('/consultations'), getGrossesses()]);
+  const consultations = Array.isArray(consultationsRes.data) ? consultationsRes.data : [];
+  const grossesseMap = new Map(grossesses.map((g) => [String(g.mamanId), g]));
 
-export const getConsultations = async (patientId) => {
-  await delay();
-  if (patientId) {
-    return mockConsultations.filter(c => c.patientId === patientId);
-  }
-  return mockConsultations;
+  const formatted = consultations.map((c) => {
+    const maman = grossesseMap.get(String(c.maman_id));
+    return {
+      id: String(c.id),
+      patientName: maman?.mamanNom || `Maman #${c.maman_id}`,
+      patientId: `MAM-${c.maman_id}`,
+      type: c.type,
+      date: c.date,
+      tensionArterielle: '-',
+      poids: '-',
+      notes: c.notes || '',
+      semaineGrossesse: maman?.semaineGrossesse || 0,
+      mamanId: String(c.maman_id),
+      professionnelId: String(c.professionnel_id),
+      heure: c.heure,
+    };
+  });
+
+  if (!mamanId) return formatted;
+  const mid = String(mamanId).replace('p-', '').replace('m-', '');
+  return formatted.filter((c) => String(c.mamanId) === mid);
 };
 
-export const getAllConsultations = async () => {
-  await delay();
-  return mockConsultations;
-};
+export const getAllConsultations = async () => getConsultations();
 
 export const getConsultationById = async (id) => {
-  await delay();
-  return mockConsultations.find(c => c.id === id);
+  const rawId = String(id).replace('c-', '');
+  const { data } = await api.get(`/consultations/${rawId}`);
+  return data;
 };
 
-export const createConsultation = async (patientId, data) => {
-  await delay();
-  return { id: 'c-' + Date.now(), patientId, ...data, statut: 'scheduled' };
+export const createConsultation = async (patientId, payload) => {
+  const pro = getCurrentUser();
+  const mamanId = String(patientId).replace('p-', '').replace('m-', '');
+
+  const body = {
+    maman_id: mamanId,
+    professionnel_id: String(pro?.id),
+    date: payload.date || new Date().toISOString().slice(0, 10),
+    heure: payload.heure || '09:00:00',
+    type: payload.type || 'Consultation de suivi',
+    notes: payload.notes || payload.diagnostic || null,
+  };
+
+  const { data } = await api.post('/consultations', body);
+  return data;
 };
 
 export const updateConsultation = async (id, data) => {
-  await delay();
-  return { id, ...data };
+  const rawId = String(id).replace('c-', '');
+  const response = await api.patch(`/consultations/${rawId}`, data);
+  return response.data;
 };
 
-// ============ VACCINATIONS ============
-
 export const getVaccinations = async () => {
-  await delay();
-  return mockVaccinations;
+  const [vaccinationsRes, bebesRes] = await Promise.all([api.get('/vaccinations'), api.get('/bebes')]);
+  const vaccinations = Array.isArray(vaccinationsRes.data) ? vaccinationsRes.data : [];
+  const bebes = Array.isArray(bebesRes.data) ? bebesRes.data : [];
+  const bebeMap = new Map(bebes.map((b) => [String(b.id), b]));
+
+  return vaccinations.map((v) => {
+    const bebe = bebeMap.get(String(v.bebe_id));
+    return {
+      id: String(v.id),
+      patientName: bebe ? `Maman #${bebe.maman_id}` : '-',
+      patientId: bebe ? `MAM-${bebe.maman_id}` : '-',
+      bebeNom: bebe?.nom || `Bebe #${v.bebe_id}`,
+      bebeId: String(v.bebe_id),
+      bebeAge: '-',
+      vaccin: v.nom_vaccin,
+      dateAdministration: v.date_vaccination || v.prochaine_dose,
+      statut: vaccinationStatus(v),
+      prochainRappel: v.prochaine_dose || undefined,
+      notes: v.notes || '',
+      raw: v,
+    };
+  });
 };
 
 export const getVaccinationsByPatient = async (patientId) => {
-  await delay();
-  return mockVaccinations.filter(v => v.patientId === patientId);
+  const vaccinations = await getVaccinations();
+  const pid = String(patientId).replace('p-', '').replace('m-', '');
+
+  return vaccinations.filter((v) => String(v.patientId).endsWith(String(pid)) || String(v.bebeId) === pid);
 };
 
 export const addVaccination = async (patientId, data) => {
-  await delay();
-  return { id: 'v-' + Date.now(), patientId, ...data, statut: 'complete' };
+  const resolvedPatient = await getPatientById(patientId);
+  const payload = {
+    bebe_id: data.bebe_id || resolvedPatient?.bebeId,
+    nom_vaccin: data.nom_vaccin || data.vaccin,
+    date_vaccination: data.date_vaccination || data.dateAdministration || new Date().toISOString().slice(0, 10),
+    prochaine_dose: data.prochaine_dose || data.prochainRappel || null,
+    notes: data.notes || null,
+  };
+
+  const response = await api.post('/vaccinations', payload);
+  return response.data;
 };
 
 export const administrerVaccin = async (id) => {
-  await delay();
-  return { id, statut: 'complete', dateAdministre: new Date().toISOString() };
+  const rawId = String(id).replace('v-', '');
+  const response = await api.patch(`/vaccinations/${rawId}`, {
+    date_vaccination: new Date().toISOString().slice(0, 10),
+  });
+  return response.data;
 };
 
-// ============ SCAN PATIENT ============
+export const registerAccouchement = async (mamanId, payload) => {
+  const body = {
+    maman_id: String(mamanId).replace('m-', '').replace('p-', ''),
+    grossesse_id: payload.grossesse_id || null,
+    nom: payload.nom,
+    date_naissance: payload.date_naissance,
+    sexe: payload.sexe,
+    poids: payload.poids || null,
+    taille: payload.taille || null,
+  };
+
+  const { data } = await api.post('/bebes', body);
+  return data;
+};
 
 export const scanPatient = async (qrData) => {
-  await delay();
-  // Simulate QR code scan - return patient info
-  if (qrData.includes('u-001')) {
-    return {
-      type: 'grossesse',
-      id: 'g-001',
-      mamanNom: 'Aminata Diallo',
-      semaineGrossesse: 26,
-      statut: 'VALIDEE',
-    };
+  const value = String(qrData || '').trim();
+  if (!value) {
+    throw new Error('Code QR vide');
   }
-  if (qrData.includes('b-001') || qrData.includes('p-001')) {
-    return {
-      type: 'bebe',
-      id: 'b-001',
-      bebeNom: 'Aminata Jr',
-      mamanNom: 'Aminata Diallo',
-      age: '12 mois',
-    };
-  }
-  throw new Error('Patient non trouvé');
+
+  const { data } = await api.post('/scans/resolve', { qr_code: value });
+  return data;
 };
 
 export default {
@@ -157,6 +276,7 @@ export default {
   getGrossesses,
   getGrossesseById,
   validateGrossesse,
+  rejectGrossesse,
   getGrossessesEnAttente,
   getConsultations,
   getAllConsultations,
@@ -167,5 +287,6 @@ export default {
   getVaccinationsByPatient,
   addVaccination,
   administrerVaccin,
+  registerAccouchement,
   scanPatient,
 };
