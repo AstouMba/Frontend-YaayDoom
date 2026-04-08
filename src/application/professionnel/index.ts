@@ -7,6 +7,7 @@ export { getAllConsultations } from './getAllConsultations';
 export { createConsultation } from './createConsultation';
 export { registerAccouchement } from './registerAccouchement';
 export { getVaccinations } from './getVaccinations';
+export { getVaccinationsByPatient } from './getVaccinationsByPatient';
 export { addVaccination } from './addVaccination';
 export { administrerVaccin } from './administrerVaccin';
 export { scanPatient } from './scanPatient';

@@ -1,25 +1,19 @@
 import axios from 'axios';
+import { clearStoredSession, getStoredSessionToken } from '../session';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://yaaydoom-backend-latest.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 30000,
 });
 
-const storage = typeof globalThis !== 'undefined' ? globalThis.localStorage : undefined;
-const isMockToken = (token) => typeof token === 'string' && token.startsWith('mock-token-');
-const isMockSession = () => {
-  if (!storage) return false;
-  return isMockToken(storage.getItem('yaydoom_token'));
-};
-
 // Request interceptor - add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = storage?.getItem('yaydoom_token');
-    if (token && !isMockToken(token)) {
+    const token = getStoredSessionToken();
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -33,10 +27,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !isMockSession()) {
+    if (error.response?.status === 401) {
       // Token expired or invalid - clear auth and redirect
-      storage?.removeItem('yaydoom_token');
-      storage?.removeItem('yaydoom_user');
+      clearStoredSession();
       const browserWindow = typeof globalThis !== 'undefined' ? globalThis.window : undefined;
       if (browserWindow) {
         browserWindow.location.href = '/login';

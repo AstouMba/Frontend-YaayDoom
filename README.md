@@ -64,7 +64,7 @@ Le front suit maintenant une **Clean Architecture pure** côté code applicatif:
 - `src/presentation/` est représenté ici par `src/pages/`, `src/components/`, `src/layouts/` et `src/context/`
 - `src/application/` contient les use cases
 - `src/domain/` contient les types métier et les contrats de repository
-- `src/infrastructure/` contient les implémentations concrètes pour l’API, le mock et le stockage local
+- `src/infrastructure/` contient les implémentations concrètes pour l’API et le stockage local
 - `src/core/` conserve les briques transverses partagées
 - `src/i18n/` gère l’internationalisation
 
@@ -80,7 +80,7 @@ flowchart TB
   UI["Presentation\npages / components / layouts / context"]:::presentation
   APP["Application\nuse cases"]:::application
   DOM["Domain\nentities + repository contracts"]:::domain
-  INF["Infrastructure\nAPI / mock DB / localStorage"]:::infrastructure
+  INF["Infrastructure\nAPI / localStorage"]:::infrastructure
   EXT["External systems\nREST backend + browser APIs"]:::infrastructure
 
   UI --> APP --> DOM
@@ -100,7 +100,6 @@ src/
   i18n/
   infrastructure/
   layouts/
-  mocks/
   pages/
   router/
 ```
@@ -145,7 +144,7 @@ Points importants:
 Le backend attendu expose les routes sous `VITE_API_BASE_URL`, par défaut:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_BASE_URL=https://yaaydoom-backend-latest.onrender.com/api
 ```
 
 ## Variables d’environnement
@@ -155,7 +154,7 @@ Copie le fichier `.env.example` en `.env` si besoin, puis ajuste les valeurs.
 Variables disponibles:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_BASE_URL=https://yaaydoom-backend-latest.onrender.com/api
 VITE_PASSPORT_CLIENT_ID=your_client_id
 VITE_PASSPORT_CLIENT_SECRET=your_client_secret
 ```
@@ -277,8 +276,7 @@ Les routes sensibles passent par `ProtectedRoute`.
 
 ### Données locales
 
-En mode mock, les données sont persistées dans `localStorage` via `src/core/mock/mockDb.js`.
-Cela permet de tester l’application sans backend tout en gardant le même contrat fonctionnel.
+Les données applicatives viennent du backend Laravel via l’URL configurée dans `VITE_API_BASE_URL`.
 
 ## Configuration i18n
 
