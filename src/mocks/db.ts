@@ -180,6 +180,48 @@ export const mockVaccins = [
   { id: 'v-011', bebeId: 'b-001', nom: 'Rappel DTC + Polio', age: '18 mois', datePrevu: '2027-03-15', dateAdministre: null, statut: 'upcoming', professionnel: null, notes: '' },
 ];
 
+export const mockConsultations = [
+  {
+    id: 'c-001',
+    mamanId: 'u-001',
+    bebeId: 'b-001',
+    professionnelId: 'u-002',
+    type: 'Consultation prénatale',
+    date: '2025-04-05',
+    heure: '09:30:00',
+    notes: '3ème consultation prénatale - contrôle routine. Tension stable et bébé en bonne santé.',
+    tensionArterielle: '12/8',
+    poids: '68',
+    semaineGrossesse: 24,
+  },
+  {
+    id: 'c-002',
+    mamanId: 'u-001',
+    bebeId: 'b-001',
+    professionnelId: 'u-002',
+    type: 'Échographie',
+    date: '2025-04-20',
+    heure: '14:00:00',
+    notes: 'Échographie du 3ème trimestre avec croissance normale.',
+    tensionArterielle: '11/7',
+    poids: '68.5',
+    semaineGrossesse: 26,
+  },
+  {
+    id: 'c-003',
+    mamanId: 'u-004',
+    bebeId: 'b-002',
+    professionnelId: 'u-002',
+    type: "Consultation d'urgence",
+    date: '2025-04-12',
+    heure: '18:00:00',
+    notes: 'Douleurs abdominales modérées. Repos et surveillance recommandés.',
+    tensionArterielle: '12/7',
+    poids: '61',
+    semaineGrossesse: 10,
+  },
+];
+
 export const mockCroissanceBebe = [
   // Bebe b-001 (Aminata Jr)
   { bebeId: 'b-001', mois: 0, label: 'Naissance', poids: 3.2, taille: 49 },
@@ -225,6 +267,7 @@ export const mockUtilisateurs = [
   { id: 6, nom: 'Dr. Moussa Diop', email: 'moussa.diop@centre.sn', telephone: '+221 77 678 90 12', role: 'professionnel' as const, specialite: 'Pédiatre', dateInscription: '2024-08-03', statut: 'actif' as const },
   { id: 7, nom: 'Khadija Fall', email: 'khadija.fall@email.com', telephone: '+221 78 789 01 23', role: 'maman' as const, dateInscription: '2024-11-01', statut: 'inactif' as const },
   { id: 8, nom: 'Rokhaya Mbaye', email: 'rokhaya.mbaye@email.com', telephone: '+221 77 890 12 34', role: 'maman' as const, dateInscription: '2024-11-20', statut: 'actif' as const },
+  { id: 9, nom: 'Awa Ndiaye', email: 'admin@demo.com', telephone: '+221 77 000 00 00', role: 'admin' as const, dateInscription: '2024-01-01', statut: 'actif' as const },
 ];
 
 export const mockProfessionnelsEnAttente = [

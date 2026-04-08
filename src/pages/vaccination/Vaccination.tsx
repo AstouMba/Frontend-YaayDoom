@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getVaccins } from '../../features/maman/services/mamanService';
+import { getVaccins } from '../../application/maman';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 type VaccinStatus = 'completed' | 'upcoming' | 'overdue';
 
@@ -36,6 +38,19 @@ export default function Vaccination() {
   const overdueCount = useMemo(() => vaccins.filter((v) => v.statut === 'overdue').length, [vaccins]);
   const totalCount = vaccins.length || 1;
   const completionPercentage = Math.round((completedCount / totalCount) * 100);
+  const displayedVaccins = activeTab === 'calendrier' ? vaccins : vaccins.filter((v) => v.statut === 'completed');
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: paginatedVaccins,
+    start,
+    end,
+  } = usePagination(displayedVaccins, 8);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, setPage]);
 
   const statusColor = (status: VaccinStatus) => {
     if (status === 'completed') return '#10b981';
@@ -132,7 +147,7 @@ export default function Vaccination() {
       </div>
 
       <div className="space-y-3">
-        {(activeTab === 'calendrier' ? vaccins : vaccins.filter((v) => v.statut === 'completed')).map((vaccin) => (
+        {paginatedVaccins.map((vaccin) => (
           <div
             key={vaccin.id}
             className="bg-white p-4 rounded-lg border-l-4 hover:shadow-sm transition-all cursor-pointer"
@@ -191,6 +206,15 @@ export default function Vaccination() {
           </div>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        start={start}
+        end={end}
+        total={displayedVaccins.length}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

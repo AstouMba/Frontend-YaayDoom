@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -8,6 +8,17 @@ interface User {
   role: 'maman' | 'professionnel' | 'admin';
   phone?: string;
   isValidated?: boolean;
+  specialite?: string;
+  matricule?: string;
+  centreDeSante?: string;
+  documentUrl?: string | null;
+  documents?: Array<Record<string, any>>;
+  decisionStatus?: 'approved' | 'rejected' | null;
+  decisionMotif?: string | null;
+  decisionDate?: string | null;
+  decisionBy?: string | null;
+  statut?: 'actif' | 'inactif' | string;
+  dateInscription?: string;
 }
 
 interface AuthContextType {
@@ -21,39 +32,37 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const TOKEN_KEY = 'yaydoom_token';
+const USER_KEY = 'yaydoom_user';
+const storage = typeof globalThis !== 'undefined' ? globalThis.localStorage : undefined;
+
+const safeParseUser = (raw: string | null): User | null => {
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(() => safeParseUser(storage?.getItem(USER_KEY) ?? null));
+  const [token, setToken] = useState<string | null>(() => storage?.getItem(TOKEN_KEY) ?? null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('yaydoom_token');
-    const storedUser = localStorage.getItem('yaydoom_user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
 
   const login = (userData: User, accessToken: string) => {
     setUser(userData);
     setToken(accessToken);
-    localStorage.setItem('yaydoom_token', accessToken);
-    localStorage.setItem('yaydoom_user', JSON.stringify(userData));
+    storage?.setItem(TOKEN_KEY, accessToken);
+    storage?.setItem(USER_KEY, JSON.stringify(userData));
 
     switch (userData.role) {
       case 'maman':
         navigate('/dashboard-maman');
         break;
       case 'professionnel':
-        if (userData.isValidated) {
-          navigate('/dashboard-pro');
-        } else {
-          alert('Votre compte est en attente de validation par un administrateur.');
-          logout();
-        }
+        navigate('/dashboard-pro');
         break;
       case 'admin':
         navigate('/dashboard-admin');
@@ -66,8 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('yaydoom_token');
-    localStorage.removeItem('yaydoom_user');
+    storage?.removeItem(TOKEN_KEY);
+    storage?.removeItem(USER_KEY);
     navigate('/login');
   };
 
@@ -75,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-      localStorage.setItem('yaydoom_user', JSON.stringify(updatedUser));
+      storage?.setItem(USER_KEY, JSON.stringify(updatedUser));
     }
   };
 

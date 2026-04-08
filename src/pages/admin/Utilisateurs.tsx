@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getUtilisateurs, updateUserStatus } from '../../features/admin/services/adminService';
+import { getUtilisateurs, updateUserStatus } from '../../application/admin';
 
 type Statut = 'actif' | 'inactif';
 type UserRole = 'maman' | 'professionnel' | 'admin' | 'user';
@@ -17,7 +17,7 @@ interface Utilisateur {
 
 const Utilisateurs = () => {
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
-  const [filtreRole, setFiltreRole] = useState<'tous' | 'maman' | 'professionnel' | 'admin'>('tous');
+  const [filtreRole, setFiltreRole] = useState<'tous' | 'maman' | 'professionnel'>('tous');
   const [recherche, setRecherche] = useState('');
   const [confirmModal, setConfirmModal] = useState<{ user: Utilisateur; action: 'activer' | 'desactiver' } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -40,7 +40,9 @@ const Utilisateurs = () => {
     loadUsers();
   }, []);
 
-  const utilisateursFiltres = utilisateurs.filter(u => {
+  const utilisateursSansAdmin = utilisateurs.filter(u => u.role !== 'admin');
+
+  const utilisateursFiltres = utilisateursSansAdmin.filter(u => {
     const matchRole = filtreRole === 'tous' || u.role === filtreRole;
     const matchRecherche = u.nom.toLowerCase().includes(recherche.toLowerCase()) ||
       u.email.toLowerCase().includes(recherche.toLowerCase());
@@ -50,7 +52,7 @@ const Utilisateurs = () => {
   const totalPages = Math.ceil(utilisateursFiltres.length / itemsPerPage);
   const utilisateursPagines = utilisateursFiltres.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-  const handleFilterChange = (newFilter: 'tous' | 'maman' | 'professionnel' | 'admin') => {
+  const handleFilterChange = (newFilter: 'tous' | 'maman' | 'professionnel') => {
     setFiltreRole(newFilter);
     setPage(1);
   };
@@ -61,9 +63,9 @@ const Utilisateurs = () => {
   };
 
   const stats = {
-    mamans: utilisateurs.filter(u => u.role === 'maman').length,
-    professionnels: utilisateurs.filter(u => u.role === 'professionnel').length,
-    actifs: utilisateurs.filter(u => u.statut === 'actif').length,
+    mamans: utilisateursSansAdmin.filter(u => u.role === 'maman').length,
+    professionnels: utilisateursSansAdmin.filter(u => u.role === 'professionnel').length,
+    actifs: utilisateursSansAdmin.filter(u => u.statut === 'actif').length,
   };
 
   const handleToggleStatut = (user: Utilisateur) => {
@@ -129,11 +131,11 @@ const Utilisateurs = () => {
               className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none" />
           </div>
           <div className="flex gap-2">
-            {(['tous', 'maman', 'professionnel', 'admin'] as const).map(r => (
+            {(['tous', 'maman', 'professionnel'] as const).map(r => (
               <button key={r} onClick={() => handleFilterChange(r)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${filtreRole === r ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 style={filtreRole === r ? { backgroundColor: 'var(--primary-teal)' } : {}}>
-                {r === 'tous' ? 'Tous' : r === 'maman' ? 'Mamans' : r === 'admin' ? 'Admins' : 'Professionnels'}
+                {r === 'tous' ? 'Tous' : r === 'maman' ? 'Mamans' : 'Professionnels'}
               </button>
             ))}
           </div>
@@ -166,7 +168,7 @@ const Utilisateurs = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 flex items-center justify-center rounded-full"
                           style={{ backgroundColor: user.role === 'maman' ? 'var(--background-soft)' : '#FEE2E2', color: user.role === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)' }}>
-                          <i className={`${user.role === 'maman' ? 'ri-parent-line' : user.role === 'admin' ? 'ri-shield-user-line' : 'ri-stethoscope-line'} text-sm`}></i>
+                          <i className={`${user.role === 'maman' ? 'ri-parent-line' : 'ri-stethoscope-line'} text-sm`}></i>
                         </div>
                         <div>
                           <p className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>{user.nom}</p>
@@ -179,7 +181,7 @@ const Utilisateurs = () => {
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 rounded-full text-xs font-medium"
                         style={{ backgroundColor: user.role === 'maman' ? 'var(--background-soft)' : '#FEE2E2', color: user.role === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)' }}>
-                        {user.role === 'maman' ? 'Maman' : user.role === 'admin' ? 'Admin' : user.role === 'professionnel' ? 'Professionnel' : 'Utilisateur'}
+                        {user.role === 'maman' ? 'Maman' : 'Professionnel'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
@@ -192,13 +194,19 @@ const Utilisateurs = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleToggleStatut(user)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${user.statut === 'actif' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                      >
-                        <i className={`${user.statut === 'actif' ? 'ri-forbid-line' : 'ri-check-line'} mr-1`}></i>
-                        {user.statut === 'actif' ? 'Désactiver' : 'Activer'}
-                      </button>
+                      {user.role === 'professionnel' ? (
+                        <button
+                          onClick={() => handleToggleStatut(user)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${user.statut === 'actif' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
+                        >
+                          <i className={`${user.statut === 'actif' ? 'ri-forbid-line' : 'ri-check-line'} mr-1`}></i>
+                          {user.statut === 'actif' ? 'Désactiver' : 'Activer'}
+                        </button>
+                      ) : (
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500">
+                          Aucune action
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

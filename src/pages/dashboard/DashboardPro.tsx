@@ -6,13 +6,15 @@ import {
   getGrossesses,
   rejectGrossesse,
   validateGrossesse,
-} from '../../features/professionnel/services/professionnelService';
+} from '../../application/professionnel';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 interface GrossesseItem {
   id: string;
-  rawId: string;
+  rawId?: string;
   mamanNom: string;
-  email: string;
+  email?: string;
   numeroTelephone: string;
   semaineGrossesse: number;
   statut: 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE' | 'ANNULEE';
@@ -70,6 +72,27 @@ const DashboardPro = () => {
       (g) => g.mamanNom.toLowerCase().includes(q) || String(g.mamanId).includes(q)
     );
   }, [patientesSuivies, searchTerm]);
+  const {
+    page: pageAttente,
+    setPage: setPageAttente,
+    totalPages: totalPagesAttente,
+    paginatedItems: grossessesAttentePage,
+    start: startAttente,
+    end: endAttente,
+  } = usePagination(filteredAttente, 8);
+  const {
+    page: pageSuivies,
+    setPage: setPageSuivies,
+    totalPages: totalPagesSuivies,
+    paginatedItems: patientesSuiviesPage,
+    start: startSuivies,
+    end: endSuivies,
+  } = usePagination(filteredSuivies, 8);
+
+  useEffect(() => {
+    setPageAttente(1);
+    setPageSuivies(1);
+  }, [searchTerm, setPageAttente, setPageSuivies]);
 
   const handleValider = async (id: string) => {
     setLoadingId(id);
@@ -189,7 +212,7 @@ const DashboardPro = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredAttente.map((g) => (
+                {grossessesAttentePage.map((g) => (
                   <tr key={g.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -229,12 +252,20 @@ const DashboardPro = () => {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={pageAttente}
+            totalPages={totalPagesAttente}
+            start={startAttente}
+            end={endAttente}
+            total={filteredAttente.length}
+            onPageChange={setPageAttente}
+          />
         </div>
       )}
 
       {activeTab === 'suivies' && (
         <div className="grid gap-4">
-          {filteredSuivies.map((p) => (
+          {patientesSuiviesPage.map((p) => (
             <div key={p.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -269,6 +300,14 @@ const DashboardPro = () => {
               </div>
             </div>
           ))}
+          <Pagination
+            page={pageSuivies}
+            totalPages={totalPagesSuivies}
+            start={startSuivies}
+            end={endSuivies}
+            total={filteredSuivies.length}
+            onPageChange={setPageSuivies}
+          />
         </div>
       )}
     </div>

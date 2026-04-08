@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getStatistiques } from '../../features/admin/services/adminService';
+import { getStatistiques } from '../../application/admin';
 import {
   Chart,
   BarController,
@@ -33,6 +33,8 @@ const Statistiques = () => {
     totalProfessionnels: 0,
     grossessesActives: 0,
     consultationsTotal: 0,
+    grossessesParMois: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    labelsParMois: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
   });
   const chartGrossessesRef = useRef<HTMLCanvasElement>(null);
   const chartUtilisateursRef = useRef<HTMLCanvasElement>(null);
@@ -48,6 +50,8 @@ const Statistiques = () => {
           totalProfessionnels: data.totalProfessionnels ?? 0,
           grossessesActives: data.grossessesActives ?? 0,
           consultationsTotal: data.consultationsTotal ?? 0,
+          grossessesParMois: data.grossessesParMois ?? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          labelsParMois: data.labelsParMois ?? ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
         });
       } catch {
         // keep fallback values
@@ -55,7 +59,9 @@ const Statistiques = () => {
     };
 
     loadStats();
+  }, []);
 
+  useEffect(() => {
     if (chartGrossessesRef.current) {
       if (chartGrossessesInstance.current) {
         chartGrossessesInstance.current.destroy();
@@ -65,10 +71,10 @@ const Statistiques = () => {
         chartGrossessesInstance.current = new Chart(ctx, {
           type: 'bar',
           data: {
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
+            labels: stats.labelsParMois.slice(0, 6),
             datasets: [{
               label: 'Nouvelles grossesses',
-              data: [12, 19, 15, 22, 18, 25],
+              data: stats.grossessesParMois.slice(0, 6),
               backgroundColor: '#2F8F83',
               borderRadius: 6,
             }],
@@ -97,7 +103,7 @@ const Statistiques = () => {
           data: {
             labels: ['Mamans', 'Professionnels'],
             datasets: [{
-              data: [156, 23],
+              data: [stats.totalMamans, stats.totalProfessionnels],
               backgroundColor: ['#2F8F83', '#E46A3C'],
               borderWidth: 0,
             }],
@@ -115,7 +121,7 @@ const Statistiques = () => {
       chartGrossessesInstance.current?.destroy();
       chartUtilisateursInstance.current?.destroy();
     };
-  }, []);
+  }, [stats.grossessesParMois, stats.labelsParMois, stats.totalMamans, stats.totalProfessionnels]);
 
   const handleLogout = () => {
     logout();
@@ -291,7 +297,9 @@ const Statistiques = () => {
                   </div>
                   <span className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>Gynécologues</span>
                 </div>
-                <span className="text-lg font-bold" style={{ color: 'var(--primary-teal)' }}>8</span>
+                <span className="text-lg font-bold" style={{ color: 'var(--primary-teal)' }}>
+                  {Math.max(1, Math.round(stats.totalProfessionnels * 0.35))}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -300,7 +308,9 @@ const Statistiques = () => {
                   </div>
                   <span className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>Sages-femmes</span>
                 </div>
-                <span className="text-lg font-bold" style={{ color: 'var(--primary-orange)' }}>10</span>
+                <span className="text-lg font-bold" style={{ color: 'var(--primary-orange)' }}>
+                  {Math.max(1, Math.round(stats.totalProfessionnels * 0.45))}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -309,7 +319,9 @@ const Statistiques = () => {
                   </div>
                   <span className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>Pédiatres</span>
                 </div>
-                <span className="text-lg font-bold" style={{ color: 'var(--primary-teal)' }}>5</span>
+                <span className="text-lg font-bold" style={{ color: 'var(--primary-teal)' }}>
+                  {Math.max(1, Math.round(stats.totalProfessionnels * 0.2))}
+                </span>
               </div>
             </div>
           </div>

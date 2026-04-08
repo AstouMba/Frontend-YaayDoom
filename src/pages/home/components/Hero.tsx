@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import HomeGallery from './HomeGallery';
 
 export default function Hero() {
   return (
@@ -46,13 +47,11 @@ export default function Hero() {
 
           {/* Image illustrative */}
           <div className="relative order-1 lg:order-2">
-            <div className="relative rounded-2xl overflow-hidden shadow-md" style={{ width: '100%', height: '280px sm:350px md:400px lg:450px' }}>
-              <img 
-                src="https://readdy.ai/api/search-image?query=A%20warm%20and%20tender%20moment%20between%20a%20young%20African%20mother%20and%20her%20smiling%20baby%20in%20soft%20natural%20lighting.%20The%20mother%20is%20gently%20holding%20her%20infant%20child%20with%20love%20and%20care.%20Soft%20pastel%20background%20in%20cream%20and%20beige%20tones.%20Professional%20healthcare%20photography%20style.%20Clean%2C%20simple%20composition%20focusing%20on%20the%20emotional%20bond.%20Warm%20color%20palette%20with%20soft%20shadows.%20High%20quality%20portrait%20photography%20with%20shallow%20depth%20of%20field.&width=600&height=700&seq=yaaydoom-hero-mother-baby-001&orientation=portrait" 
-                alt="Mère et enfant" 
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
+            <HomeGallery
+              heroSrc="/home/maman-bebe.png"
+              doctorSrc="/home/pro-bebe.png"
+              pregnancySrc="/home/grossesse.png"
+            />
           </div>
         </div>
 

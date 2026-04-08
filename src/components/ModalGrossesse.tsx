@@ -14,6 +14,9 @@ interface GrossesseData {
 }
 
 export default function ModalGrossesse({ isOpen, onClose, onSubmit, loading = false }: ModalGrossesseProps) {
+  const [errors, setErrors] = useState<{
+    dateDernieresRegles?: string;
+  }>({});
   const [formData, setFormData] = useState<GrossesseData>({
     dateDernieresRegles: '',
     nombreGrossessesPrecedentes: 0,
@@ -22,6 +25,12 @@ export default function ModalGrossesse({ isOpen, onClose, onSubmit, loading = fa
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.dateDernieresRegles) {
+      setErrors({ dateDernieresRegles: 'La date de vos dernières règles est requise' });
+      return;
+    }
+
+    setErrors({});
     onSubmit(formData);
   };
 
@@ -59,14 +68,15 @@ export default function ModalGrossesse({ isOpen, onClose, onSubmit, loading = fa
             </label>
             <input
               type="date"
-              required
               disabled={loading}
               value={formData.dateDernieresRegles}
               onChange={(e) =>
                 setFormData({ ...formData, dateDernieresRegles: e.target.value })
               }
-              className="w-full h-12 px-4 border-2 border-gray-300 rounded-lg text-sm focus:border-[var(--primary-teal)] focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              aria-invalid={!!errors.dateDernieresRegles}
+              className={`w-full h-12 px-4 border-2 rounded-lg text-sm focus:border-[var(--primary-teal)] focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed ${errors.dateDernieresRegles ? 'border-red-400' : 'border-gray-300'}`}
             />
+            {errors.dateDernieresRegles && <p className="mt-1 text-xs text-red-500">{errors.dateDernieresRegles}</p>}
           </div>
 
           {/* Nombre de grossesses précédentes */}

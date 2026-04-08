@@ -57,9 +57,11 @@ const initialAuthState = {
   isAuthenticated: false,
 };
 
+const storage = typeof globalThis !== 'undefined' ? globalThis.localStorage : undefined;
+
 // Load from localStorage
-const storedToken = typeof localStorage !== 'undefined' ? localStorage.getItem('yaydoom_token') : null;
-const storedUser = typeof localStorage !== 'undefined' ? localStorage.getItem('yaydoom_user') : null;
+const storedToken = storage ? storage.getItem('yaydoom_token') : null;
+const storedUser = storage ? storage.getItem('yaydoom_user') : null;
 
 if (storedToken && storedUser) {
   initialAuthState.token = storedToken;
@@ -73,17 +75,17 @@ export const authStore = createStore(initialAuthState);
 export const authActions = {
   login: (user, token) => {
     authStore.setState({ user, token, isAuthenticated: true });
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('yaydoom_token', token);
-      localStorage.setItem('yaydoom_user', JSON.stringify(user));
+    if (storage) {
+      storage.setItem('yaydoom_token', token);
+      storage.setItem('yaydoom_user', JSON.stringify(user));
     }
   },
 
   logout: () => {
     authStore.setState({ user: null, token: null, isAuthenticated: false });
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('yaydoom_token');
-      localStorage.removeItem('yaydoom_user');
+    if (storage) {
+      storage.removeItem('yaydoom_token');
+      storage.removeItem('yaydoom_user');
     }
   },
 
@@ -91,8 +93,8 @@ export const authActions = {
     const currentState = authStore.getState();
     const updatedUser = { ...currentState.user, ...userData };
     authStore.setState({ user: updatedUser });
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('yaydoom_user', JSON.stringify(updatedUser));
+    if (storage) {
+      storage.setItem('yaydoom_user', JSON.stringify(updatedUser));
     }
   },
 };

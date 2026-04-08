@@ -1,15 +1,22 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { register } from '../../features/auth/services/authService';
+import { registerUser, uploadProfessionalDocuments } from '../../application/auth';
 
 type Role = 'maman' | 'professionnel';
 
-interface FormData {
+interface BaseFormData {
   fullName: string;
   phone: string;
-  birthDate: string;
   password: string;
   confirmPassword: string;
+}
+
+interface MamanFormData extends BaseFormData {
+  birthDate: string;
+}
+
+interface ProfessionnelFormData extends BaseFormData {
+  email: string;
   specialty: string;
   matricule: string;
   healthCenter: string;
@@ -22,49 +29,91 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Partial<FormData & { general: string }>>({});
+  const [errors, setErrors] = useState<Partial<MamanFormData & ProfessionnelFormData & { general: string }>>({});
   const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState<FormData>({
+  const [mamanForm, setMamanForm] = useState<MamanFormData>({
     fullName: '',
     phone: '',
     birthDate: '',
     password: '',
     confirmPassword: '',
+  });
+
+  const [proForm, setProForm] = useState<ProfessionnelFormData>({
+    fullName: '',
+    phone: '',
+    email: '',
     specialty: '',
     matricule: '',
     healthCenter: '',
     document: null,
+    password: '',
+    confirmPassword: '',
   });
 
-  const specialties = ['Gynécologue', 'Sage-femme', 'Médecin généraliste', 'Pédiatre', 'Infirmier(ère)'];
+  const [proDocumentPreview, setProDocumentPreview] = useState<string | null>(null);
 
-  const update = (field: keyof FormData, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+  const specialties = ['Gynécologue', 'Sage-femme', 'Médecin généraliste', 'Pédiatre', 'Infirmier(ère)'];
+  const roleMeta = role === 'maman'
+    ? {
+        label: 'Parcours maman',
+        title: 'Créer mon compte maman',
+        accent: 'var(--primary-teal)',
+        accentSoft: 'rgba(31, 143, 133, 0.10)',
+        border: '#BFE7E2',
+        chip: 'Suivi grossesse et bébé',
+        icon: 'ri-parent-line',
+      }
+    : {
+        label: 'Parcours professionnel',
+        title: 'Créer mon compte professionnel',
+        accent: 'var(--primary-orange)',
+        accentSoft: 'rgba(225, 121, 62, 0.10)',
+        border: '#F6C6A7',
+        chip: 'Validation administrative requise',
+        icon: 'ri-stethoscope-line',
+      };
+  const currentForm = role === 'maman' ? mamanForm : proForm;
+
+  const updateMaman = (field: keyof MamanFormData, value: string) => {
+    setMamanForm(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  const updatePro = (field: keyof ProfessionnelFormData, value: string | File | null) => {
+    setProForm(prev => ({ ...prev, [field]: value }));
     setErrors(prev => ({ ...prev, [field]: undefined }));
   };
 
   const validateStep1 = () => {
-    const e: Partial<FormData> = {};
-    if (!form.fullName.trim()) e.fullName = 'Votre nom est requis';
-    if (!form.phone.trim()) e.phone = 'Votre numéro de téléphone est requis';
-    if (!form.birthDate) e.birthDate = 'Votre date de naissance est requise';
+    const e: Partial<MamanFormData & ProfessionnelFormData> = {};
+    if (!currentForm.fullName.trim()) e.fullName = 'Votre nom est requis';
+    if (!currentForm.phone.trim()) e.phone = 'Votre numéro de téléphone est requis';
+    if (role === 'maman' && !mamanForm.birthDate) e.birthDate = 'Votre date de naissance est requise';
+    if (role === 'professionnel') {
+      if (!proForm.email.trim()) {
+        e.email = 'Votre email professionnel est requis';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(proForm.email.trim())) {
+        e.email = 'Veuillez saisir un email valide';
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep2 = () => {
-    const e: Partial<FormData> = {};
+    const e: Partial<MamanFormData & ProfessionnelFormData> = {};
     if (role === 'professionnel') {
-      if (!form.specialty) e.specialty = 'Votre spécialité est requise';
-      if (!form.matricule.trim()) e.matricule = 'Votre matricule est requis';
-      if (!form.healthCenter.trim()) e.healthCenter = 'Le centre de santé est requis';
-      if (!form.document) (e as any).general = 'Le document justificatif est requis';
+      if (!proForm.specialty) e.specialty = 'Votre spécialité est requise';
+      if (!proForm.matricule.trim()) e.matricule = 'Votre matricule est requis';
+      if (!proForm.healthCenter.trim()) e.healthCenter = 'Le centre de santé est requis';
     }
-    if (!form.password || form.password.length < 6) e.password = 'Le mot de passe doit avoir au moins 6 caractères';
-    if (form.password !== form.confirmPassword) e.confirmPassword = 'Les mots de passe ne sont pas identiques';
+    const password = role === 'maman' ? mamanForm.password : proForm.password;
+    const confirmPassword = role === 'maman' ? mamanForm.confirmPassword : proForm.confirmPassword;
+    if (!password || password.length < 6) e.password = 'Le mot de passe doit avoir au moins 6 caractères';
+    if (password !== confirmPassword) e.confirmPassword = 'Les mots de passe ne sont pas identiques';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -78,36 +127,43 @@ export default function RegisterPage() {
     if (!validateStep2()) return;
     
     setLoading(true);
-    
-    // Prepare registration data
+
     const registrationData = {
       role,
-      fullName: form.fullName,
-      phone: form.phone,
-      birthDate: form.birthDate,
-      password: form.password,
+      fullName: currentForm.fullName,
+      phone: currentForm.phone,
+      birthDate: role === 'maman' ? mamanForm.birthDate : undefined,
+      password: role === 'maman' ? mamanForm.password : proForm.password,
+      passwordConfirmation: role === 'maman' ? mamanForm.confirmPassword : proForm.confirmPassword,
       ...(role === 'professionnel' && {
-        specialty: form.specialty,
-        matricule: form.matricule,
-        healthCenter: form.healthCenter,
-        document: form.document ? {
-          name: form.document.name,
-          type: form.document.type,
-          size: form.document.size
-        } : null
+        email: proForm.email,
+      }),
+      ...(role === 'professionnel' && {
+        specialty: proForm.specialty,
+        matricule: proForm.matricule,
+        healthCenter: proForm.healthCenter,
       })
     };
 
     try {
-      // Call the actual API
-      console.log('[DEBUG-REGISTER] Appel de l\'API avec:', registrationData);
-      const response = await register(registrationData);
-      console.log('[DEBUG-REGISTER] Réponse de l\'API:', response);
-      
+      const result = await registerUser(registrationData as any);
+
+      if (result?.token) {
+        localStorage.setItem('yaydoom_token', result.token);
+      }
+      localStorage.setItem('yaydoom_user', JSON.stringify(result.user));
+
+      if (role === 'professionnel' && proForm.document) {
+        await uploadProfessionalDocuments([proForm.document]);
+      }
+
       setSubmitted(true);
     } catch (error) {
-      console.error('[DEBUG-REGISTER] Erreur:', error);
-      setErrors(prev => ({ ...prev, general: 'Une erreur est survenue lors de l\'inscription.' }));
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Une erreur est survenue lors de l\'inscription.';
+      setErrors(prev => ({ ...prev, general: message }));
     } finally {
       setLoading(false);
     }
@@ -120,13 +176,13 @@ export default function RegisterPage() {
       setErrors(prev => ({ ...prev, general: 'Fichier trop volumineux (max 5MB)' }));
       return;
     }
-    setForm(prev => ({ ...prev, document: file }));
+    updatePro('document', file);
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onloadend = () => setDocumentPreview(reader.result as string);
+      reader.onloadend = () => setProDocumentPreview(reader.result as string);
       reader.readAsDataURL(file);
     } else {
-      setDocumentPreview('pdf');
+      setProDocumentPreview('pdf');
     }
     setErrors(prev => ({ ...prev, general: undefined }));
   };
@@ -210,11 +266,21 @@ export default function RegisterPage() {
 
           <div className="mb-6">
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--dark-brown)' }}>
-              Créer mon compte
+              {roleMeta.title}
             </h1>
-            {role === 'professionnel' && (
-              <p className="text-sm text-gray-500">Étape {step} sur 2</p>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-gray-500">{roleMeta.label}</p>
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                style={{ backgroundColor: roleMeta.accentSoft, color: roleMeta.accent }}
+              >
+                <i className={`${roleMeta.icon} text-[11px]`}></i>
+                {roleMeta.chip}
+              </span>
+              {role === 'professionnel' && (
+                <span className="text-sm text-gray-500">Étape {step} sur 2</span>
+              )}
+            </div>
           </div>
 
           {/* Progress pour professionnel */}
@@ -222,7 +288,7 @@ export default function RegisterPage() {
             <div className="flex gap-2 mb-7">
               {[1, 2].map(s => (
                 <div key={s} className={`h-1.5 flex-1 rounded-full transition-all ${s <= step ? '' : 'bg-gray-200'}`}
-                  style={s <= step ? { backgroundColor: 'var(--primary-teal)' } : {}} />
+                  style={s <= step ? { backgroundColor: roleMeta.accent } : {}} />
               ))}
             </div>
           )}
@@ -231,21 +297,25 @@ export default function RegisterPage() {
           <div className="mb-6">
             <p className="text-sm font-semibold mb-3" style={{ color: 'var(--dark-brown)' }}>Je suis...</p>
             <div className="grid grid-cols-2 gap-3">
-              {([
-                { val: 'maman', icon: 'ri-parent-line', label: 'Maman', sub: 'Je suis enceinte ou j\'ai un bébé' },
-                { val: 'professionnel', icon: 'ri-stethoscope-line', label: 'Professionnel', sub: 'Médecin, Sage-femme...' },
-              ] as const).map(r => (
-                <button
+                {([
+                  { val: 'maman', icon: 'ri-parent-line', label: 'Maman', sub: 'Je suis enceinte ou j\'ai un bébé' },
+                  { val: 'professionnel', icon: 'ri-stethoscope-line', label: 'Professionnel', sub: 'Médecin, Sage-femme...' },
+                ] as const).map(r => (
+                  <button
                   key={r.val}
                   type="button"
-                  onClick={() => { setRole(r.val); setStep(1); }}
+                  onClick={() => { setRole(r.val); setStep(1); setErrors({}); }}
                   className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                    role === r.val ? 'border-[var(--primary-teal)] bg-white' : 'border-gray-200 bg-white hover:border-gray-300'
+                    role === r.val ? 'bg-white shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
+                  style={{
+                    borderColor: role === r.val ? (r.val === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)') : '#E5E7EB',
+                    boxShadow: role === r.val ? '0 10px 25px rgba(0,0,0,0.06)' : undefined,
+                  }}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-7 h-7 flex items-center justify-center rounded-lg"
-                      style={{ backgroundColor: role === r.val ? 'var(--primary-teal)' : '#e5e7eb', color: role === r.val ? 'white' : '#6b7280' }}>
+                      style={{ backgroundColor: role === r.val ? (r.val === 'maman' ? 'var(--primary-teal)' : 'var(--primary-orange)') : '#e5e7eb', color: role === r.val ? 'white' : '#6b7280' }}>
                       <i className={`${r.icon} text-sm`}></i>
                     </div>
                     <span className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>{r.label}</span>
@@ -262,7 +332,11 @@ export default function RegisterPage() {
           >
             {/* FORMULAIRE SIMPLIFIÉ POUR MAMAN - Une seule étape */}
             {role === 'maman' ? (
-              <div className="space-y-4">
+              <div className="space-y-4 p-5 rounded-2xl border bg-white shadow-sm" style={{ borderColor: roleMeta.border, backgroundColor: '#FFFFFF' }}>
+                <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl" style={{ backgroundColor: roleMeta.accentSoft, color: roleMeta.accent }}>
+                  <i className={`${roleMeta.icon} text-base`}></i>
+                  <p className="text-sm font-semibold">Profil maman</p>
+                </div>
                 {/* Nom complet - Grand et visible */}
                 <div>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -270,8 +344,8 @@ export default function RegisterPage() {
                   </label>
                   <input
                     type="text"
-                    value={form.fullName}
-                    onChange={e => update('fullName', e.target.value)}
+                    value={mamanForm.fullName}
+                    onChange={e => updateMaman('fullName', e.target.value)}
                     className={`w-full h-12 px-4 rounded-xl border text-base focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.fullName ? 'border-red-400' : ''}`}
                     style={{ borderColor: errors.fullName ? undefined : '#DDD0C8' }}
                     placeholder="Ex: Aminata Diallo"
@@ -286,8 +360,8 @@ export default function RegisterPage() {
                   </label>
                   <input
                     type="tel"
-                    value={form.phone}
-                    onChange={e => update('phone', e.target.value)}
+                    value={mamanForm.phone}
+                    onChange={e => updateMaman('phone', e.target.value)}
                     className={`w-full h-12 px-4 rounded-xl border text-base focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.phone ? 'border-red-400' : ''}`}
                     style={{ borderColor: errors.phone ? undefined : '#DDD0C8' }}
                     placeholder="77 123 45 67"
@@ -304,8 +378,8 @@ export default function RegisterPage() {
                   </label>
                   <input
                     type="date"
-                    value={form.birthDate}
-                    onChange={e => update('birthDate', e.target.value)}
+                    value={mamanForm.birthDate}
+                    onChange={e => updateMaman('birthDate', e.target.value)}
                     className={`w-full h-12 px-4 rounded-xl border text-base focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.birthDate ? 'border-red-400' : ''}`}
                     style={{ borderColor: errors.birthDate ? undefined : '#DDD0C8' }}
                   />
@@ -320,8 +394,8 @@ export default function RegisterPage() {
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      value={form.password}
-                      onChange={e => update('password', e.target.value)}
+                      value={mamanForm.password}
+                      onChange={e => updateMaman('password', e.target.value)}
                       minLength={6}
                       className={`w-full h-12 px-4 pr-12 rounded-xl border text-base focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.password ? 'border-red-400' : ''}`}
                       style={{ borderColor: errors.password ? undefined : '#DDD0C8' }}
@@ -342,8 +416,8 @@ export default function RegisterPage() {
                   </label>
                   <input
                     type={showConfirm ? 'text' : 'password'}
-                    value={form.confirmPassword}
-                    onChange={e => update('confirmPassword', e.target.value)}
+                    value={mamanForm.confirmPassword}
+                    onChange={e => updateMaman('confirmPassword', e.target.value)}
                     className={`w-full h-12 px-4 rounded-xl border text-base focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.confirmPassword ? 'border-red-400' : ''}`}
                     style={{ borderColor: errors.confirmPassword ? undefined : '#DDD0C8' }}
                     placeholder="Répétez le mot de passe"
@@ -355,7 +429,7 @@ export default function RegisterPage() {
                   type="submit"
                   disabled={loading}
                   className="w-full h-12 rounded-xl text-white font-semibold text-base transition-all hover:opacity-90 cursor-pointer flex items-center justify-center gap-2"
-                  style={{ backgroundColor: 'var(--primary-teal)' }}
+                  style={{ backgroundColor: roleMeta.accent }}
                 >
                   {loading ? (
                     <>
@@ -374,15 +448,19 @@ export default function RegisterPage() {
               /* FORMULAIRE PROFESSIONNEL - 2 étapes */
               <>
                 {step === 1 && (
-                  <div className="space-y-4">
+                  <div className="space-y-4 p-5 rounded-2xl border bg-white shadow-sm" style={{ borderColor: roleMeta.border, backgroundColor: '#FFFFFF' }}>
+                    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl" style={{ backgroundColor: roleMeta.accentSoft, color: roleMeta.accent }}>
+                      <i className={`${roleMeta.icon} text-base`}></i>
+                      <p className="text-sm font-semibold">Identification professionnelle</p>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
                         Votre nom complet
                       </label>
                       <input
                         type="text"
-                        value={form.fullName}
-                        onChange={e => update('fullName', e.target.value)}
+                        value={proForm.fullName}
+                        onChange={e => updatePro('fullName', e.target.value)}
                         className={`w-full h-11 px-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.fullName ? 'border-red-400' : ''}`}
                         style={{ borderColor: errors.fullName ? undefined : '#DDD0C8' }}
                         placeholder="Dr. Nom Prénom"
@@ -396,8 +474,8 @@ export default function RegisterPage() {
                       </label>
                       <input
                         type="tel"
-                        value={form.phone}
-                        onChange={e => update('phone', e.target.value)}
+                        value={proForm.phone}
+                        onChange={e => updatePro('phone', e.target.value)}
                         className={`w-full h-11 px-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.phone ? 'border-red-400' : ''}`}
                         style={{ borderColor: errors.phone ? undefined : '#DDD0C8' }}
                         placeholder="+221 XX XXX XX XX"
@@ -405,11 +483,26 @@ export default function RegisterPage() {
                       {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
+                        Email professionnel
+                      </label>
+                      <input
+                        type="email"
+                        value={proForm.email}
+                        onChange={e => updatePro('email', e.target.value)}
+                        className={`w-full h-11 px-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white ${errors.email ? 'border-red-400' : ''}`}
+                        style={{ borderColor: errors.email ? undefined : '#DDD0C8' }}
+                        placeholder="dr.fatou@example.com"
+                      />
+                      {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleNext}
                       className="w-full h-11 rounded-lg text-white font-semibold text-sm transition-all hover:opacity-90 cursor-pointer"
-                      style={{ backgroundColor: 'var(--primary-teal)' }}
+                      style={{ backgroundColor: roleMeta.accent }}
                     >
                       Suivant <i className="ri-arrow-right-line ml-1"></i>
                     </button>
@@ -417,10 +510,10 @@ export default function RegisterPage() {
                 )}
 
                 {step === 2 && (
-                  <div className="space-y-4">
+                  <div className="space-y-4 p-5 rounded-2xl border bg-white shadow-sm" style={{ borderColor: roleMeta.border, backgroundColor: '#FFFFFF' }}>
                     {/* Informations professionnelles */}
-                    <div className="p-4 rounded-xl border" style={{ backgroundColor: 'white', borderColor: '#DDD0C8' }}>
-                      <p className="text-xs font-semibold mb-3" style={{ color: 'var(--primary-teal)' }}>
+                    <div className="p-4 rounded-xl border" style={{ backgroundColor: roleMeta.accentSoft, borderColor: roleMeta.border }}>
+                      <p className="text-xs font-semibold mb-3" style={{ color: roleMeta.accent }}>
                         <i className="ri-hospital-line mr-1.5"></i>
                         Informations professionnelles
                       </p>
@@ -428,8 +521,8 @@ export default function RegisterPage() {
                         <div>
                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>Spécialité</label>
                           <select
-                            value={form.specialty}
-                            onChange={e => update('specialty', e.target.value)}
+                            value={proForm.specialty}
+                            onChange={e => updatePro('specialty', e.target.value)}
                             className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white"
                             style={{ borderColor: '#DDD0C8' }}
                           >
@@ -442,8 +535,8 @@ export default function RegisterPage() {
                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>Matricule</label>
                           <input
                             type="text"
-                            value={form.matricule}
-                            onChange={e => update('matricule', e.target.value)}
+                            value={proForm.matricule}
+                            onChange={e => updatePro('matricule', e.target.value)}
                             className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white"
                             style={{ borderColor: '#DDD0C8' }}
                             placeholder="MAT123456"
@@ -454,8 +547,8 @@ export default function RegisterPage() {
                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>Centre de santé</label>
                           <input
                             type="text"
-                            value={form.healthCenter}
-                            onChange={e => update('healthCenter', e.target.value)}
+                            value={proForm.healthCenter}
+                            onChange={e => updatePro('healthCenter', e.target.value)}
                             className="w-full h-10 px-3 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] bg-white"
                             style={{ borderColor: '#DDD0C8' }}
                             placeholder="Nom de l'établissement"
@@ -470,7 +563,7 @@ export default function RegisterPage() {
                       <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
                         Pièce d'identité ou diplôme
                       </label>
-                      {!form.document ? (
+                      {!proForm.document ? (
                         <label
                           htmlFor="doc"
                           className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-xl cursor-pointer hover:border-[var(--primary-teal)] bg-white"
@@ -482,13 +575,13 @@ export default function RegisterPage() {
                         </label>
                       ) : (
                         <div className="flex items-center gap-3 p-3 rounded-xl border bg-white" style={{ borderColor: 'var(--primary-teal)' }}>
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: documentPreview === 'pdf' ? 'var(--primary-orange)' : 'var(--primary-teal)' }}>
-                            <i className={`${documentPreview === 'pdf' ? 'ri-file-pdf-line' : 'ri-image-line'} text-white`}></i>
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: proDocumentPreview === 'pdf' ? 'var(--primary-orange)' : 'var(--primary-teal)' }}>
+                            <i className={`${proDocumentPreview === 'pdf' ? 'ri-file-pdf-line' : 'ri-image-line'} text-white`}></i>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate" style={{ color: 'var(--dark-brown)' }}>{form.document.name}</p>
+                            <p className="text-sm font-medium truncate" style={{ color: 'var(--dark-brown)' }}>{proForm.document.name}</p>
                           </div>
-                          <button type="button" onClick={() => { setForm(p => ({ ...p, document: null })); setDocumentPreview(null); }}
+                          <button type="button" onClick={() => { updatePro('document', null); setProDocumentPreview(null); }}
                             className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100">
                             <i className="ri-close-line text-sm text-red-600"></i>
                           </button>
@@ -503,8 +596,8 @@ export default function RegisterPage() {
                         <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>Mot de passe</label>
                         <input
                           type={showPassword ? 'text' : 'password'}
-                          value={form.password}
-                          onChange={e => update('password', e.target.value)}
+                          value={proForm.password}
+                          onChange={e => updatePro('password', e.target.value)}
                           minLength={6}
                           className={`w-full h-10 px-3 rounded-lg border text-sm focus:outline-none bg-white ${errors.password ? 'border-red-400' : ''}`}
                           style={{ borderColor: errors.password ? undefined : '#DDD0C8' }}
@@ -516,8 +609,8 @@ export default function RegisterPage() {
                         <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>Confirmer</label>
                         <input
                           type={showConfirm ? 'text' : 'password'}
-                          value={form.confirmPassword}
-                          onChange={e => update('confirmPassword', e.target.value)}
+                          value={proForm.confirmPassword}
+                          onChange={e => updatePro('confirmPassword', e.target.value)}
                           className={`w-full h-10 px-3 rounded-lg border text-sm focus:outline-none bg-white ${errors.confirmPassword ? 'border-red-400' : ''}`}
                           style={{ borderColor: errors.confirmPassword ? undefined : '#DDD0C8' }}
                           placeholder="Répéter"
@@ -536,7 +629,7 @@ export default function RegisterPage() {
                         type="submit"
                         disabled={loading}
                         className="flex-1 h-11 rounded-lg text-white font-semibold text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
-                        style={{ backgroundColor: 'var(--primary-teal)' }}
+                        style={{ backgroundColor: roleMeta.accent }}
                       >
                         {loading ? <i className="ri-loader-4-line animate-spin"></i> : <><i className="ri-user-add-line mr-1"></i>Créer</>}
                       </button>

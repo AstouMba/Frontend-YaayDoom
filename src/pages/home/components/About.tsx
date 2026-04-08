@@ -2,20 +2,8 @@ export default function About() {
   return (
     <section id="a-propos" className="py-12 sm:py-16 px-4 sm:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          {/* Image */}
-          <div className="relative order-1">
-            <div className="relative rounded-2xl overflow-hidden shadow-md" style={{ width: '100%', height: '250px sm:300px md:350px lg:400px' }}>
-              <img 
-                src="https://readdy.ai/api/search-image?query=African%20healthcare%20professional%20woman%20doctor%20in%20white%20medical%20coat%20using%20digital%20tablet%20in%20modern%20clinic.%20Warm%20professional%20medical%20environment%20with%20soft%20natural%20lighting.%20Clean%20simple%20background%20in%20cream%20and%20beige%20tones.%20Professional%20healthcare%20photography.%20High%20quality%20portrait%20with%20shallow%20depth%20of%20field.%20Confident%20and%20caring%20expression.&width=600&height=500&seq=yaaydoom-about-doctor-001&orientation=landscape" 
-                alt="Professionnel de santé" 
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-          </div>
-
-          {/* Contenu */}
-          <div className="order-2">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          <div className="lg:col-span-7">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4" style={{ color: 'var(--dark-brown)' }}>
               À propos de YaayDoom+
             </h2>

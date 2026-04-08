@@ -1,0 +1,12 @@
+export { getPatients } from './getPatients';
+export { getGrossesses } from './getGrossesses';
+export { validateGrossesse } from './validateGrossesse';
+export { rejectGrossesse } from './rejectGrossesse';
+export { getConsultations } from './getConsultations';
+export { getAllConsultations } from './getAllConsultations';
+export { createConsultation } from './createConsultation';
+export { registerAccouchement } from './registerAccouchement';
+export { getVaccinations } from './getVaccinations';
+export { addVaccination } from './addVaccination';
+export { administrerVaccin } from './administrerVaccin';
+export { scanPatient } from './scanPatient';

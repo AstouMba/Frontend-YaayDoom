@@ -3,7 +3,9 @@ import {
   getGrossesses,
   rejectGrossesse,
   validateGrossesse,
-} from '../../features/professionnel/services/professionnelService';
+} from '../../application/professionnel';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 type FilterStatut = 'TOUS' | 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE' | 'ANNULEE';
 
@@ -13,7 +15,7 @@ interface Grossesse {
   mamanId: string;
   statut: 'EN_ATTENTE' | 'VALIDEE' | 'TERMINEE' | 'ANNULEE';
   dateDernieresRegles: string;
-  datePresumeAccouchement: string;
+  datePresumeAccouchement?: string;
   semaineGrossesse: number;
   notes?: string;
   dateDeclaration?: string;
@@ -64,6 +66,18 @@ const Grossesses = () => {
       return matchSearch && matchStatut;
     });
   }, [grossesses, searchTerm, filterStatut]);
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: grossessesPaginees,
+    start,
+    end,
+  } = usePagination(filteredGrossesses, 8);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterStatut, setPage]);
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
@@ -195,7 +209,7 @@ const Grossesses = () => {
       </div>
 
       <div className="space-y-4">
-        {filteredGrossesses.map((grossesse) => (
+        {grossessesPaginees.map((grossesse) => (
           <div key={grossesse.id} className="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
               <div className="flex items-start gap-3">
@@ -276,6 +290,15 @@ const Grossesses = () => {
           <p className="text-sm text-gray-500">Aucune grossesse trouvee</p>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        start={start}
+        end={end}
+        total={filteredGrossesses.length}
+        onPageChange={setPage}
+      />
     </div>
   );
 };

@@ -8,11 +8,18 @@ const api = axios.create({
   timeout: 30000,
 });
 
+const storage = typeof globalThis !== 'undefined' ? globalThis.localStorage : undefined;
+const isMockToken = (token) => typeof token === 'string' && token.startsWith('mock-token-');
+const isMockSession = () => {
+  if (!storage) return false;
+  return isMockToken(storage.getItem('yaydoom_token'));
+};
+
 // Request interceptor - add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('yaydoom_token');
-    if (token) {
+    const token = storage?.getItem('yaydoom_token');
+    if (token && !isMockToken(token)) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -26,11 +33,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isMockSession()) {
       // Token expired or invalid - clear auth and redirect
-      localStorage.removeItem('yaydoom_token');
-      localStorage.removeItem('yaydoom_user');
-      window.location.href = '/login';
+      storage?.removeItem('yaydoom_token');
+      storage?.removeItem('yaydoom_user');
+      const browserWindow = typeof globalThis !== 'undefined' ? globalThis.window : undefined;
+      if (browserWindow) {
+        browserWindow.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

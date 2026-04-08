@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface QRCardProps {
   userName: string;
@@ -46,11 +47,7 @@ export default function QRCard({ userName, userId }: QRCardProps) {
         {/* QR Code */}
         <div className="flex justify-center mb-6">
           <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${userId}`}
-              alt="QR Code"
-              className="w-44 h-44"
-            />
+            <QRCodeSVG value={userId} size={180} level="M" fgColor="#1e293b" />
           </div>
         </div>
 

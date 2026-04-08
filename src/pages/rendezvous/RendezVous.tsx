@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getRendezVous } from '../../features/maman/services/mamanService';
+import { getRendezVous } from '../../application/maman';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 type Tab = 'upcoming' | 'past';
 
@@ -31,6 +33,19 @@ export default function RendezVous() {
     { id: 102, type: 'Échographie', date: '2025-03-01', heure: '14:00', professionnel: 'Dr. Marie Diop', lieu: 'Clinique Pasteur', statut: 'completed' },
     { id: 103, type: 'Consultation prénatale', date: '2025-02-15', heure: '10:00', professionnel: 'Dr. Fatou Sow', lieu: 'Hôpital Principal de Dakar', statut: 'completed' },
   ];
+  const displayedAppointments = activeTab === 'upcoming' ? upcomingAppointments : pastAppointments;
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: paginatedAppointments,
+    start,
+    end,
+  } = usePagination(displayedAppointments, 6);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, setPage]);
 
   return (
     <div className="p-6 max-w-full">
@@ -57,8 +72,8 @@ export default function RendezVous() {
       {/* ─── Tab: À venir ──────────────────────────────────────── */}
       {activeTab === 'upcoming' && (
         <div className="space-y-4">
-          {upcomingAppointments.length > 0 ? (
-            upcomingAppointments.map(rdv => (
+          {displayedAppointments.length > 0 ? (
+            paginatedAppointments.map(rdv => (
               <div key={rdv.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -98,7 +113,7 @@ export default function RendezVous() {
       {/* ─── Tab: Passés ──────────────────────────────────────── */}
       {activeTab === 'past' && (
         <div className="space-y-4">
-          {pastAppointments.map(rdv => (
+          {paginatedAppointments.map(rdv => (
             <div key={rdv.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 opacity-80">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -123,6 +138,15 @@ export default function RendezVous() {
           ))}
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        start={start}
+        end={end}
+        total={displayedAppointments.length}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

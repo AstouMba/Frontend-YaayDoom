@@ -3,40 +3,64 @@ import {
   approveProfessionnel,
   getProfessionnelsEnAttente,
   rejectProfessionnel,
-} from '../../features/admin/services/adminService';
-
-interface Professionnel {
-  id: string;
-  nom: string;
-  email: string;
-  telephone: string;
-  specialite: string;
-  matricule: string;
-  centreDesante: string;
-  documentUrl?: string;
-  dateInscription: string;
-}
+} from '../../application/admin';
+import type { PendingProfessional } from '../../domain/admin/types';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 const Validation = () => {
-  const [professionnels, setProfessionnels] = useState<Professionnel[]>([]);
-  const [selectedPro, setSelectedPro] = useState<Professionnel | null>(null);
+  const [professionnels, setProfessionnels] = useState<PendingProfessional[]>([]);
+  const [selectedPro, setSelectedPro] = useState<PendingProfessional | null>(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [selectedDecision, setSelectedDecision] = useState<'approve' | 'reject' | null>(null);
+  const [decisionResult, setDecisionResult] = useState<{
+    action: 'approve' | 'reject';
+    motif: string;
+    professionnel?: PendingProfessional;
+  } | null>(null);
+  const [decisionMotif, setDecisionMotif] = useState('');
+  const [decisionError, setDecisionError] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: professionnelsPagines,
+    start,
+    end,
+  } = usePagination(professionnels, 8);
+
+  const loadProfessionnels = async () => {
+    try {
+      const data = await getProfessionnelsEnAttente();
+      setProfessionnels(data);
+    } catch {
+      showNotif('error', 'Impossible de charger les professionnels en attente.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadProfessionnels = async () => {
-      try {
-        const data = await getProfessionnelsEnAttente();
-        setProfessionnels(data);
-      } catch {
-        showNotif('error', 'Impossible de charger les professionnels en attente.');
-      } finally {
-        setLoading(false);
-      }
+    loadProfessionnels();
+
+    const intervalId = globalThis.setInterval(() => {
+      loadProfessionnels();
+    }, 15000);
+
+    const handleFocus = () => {
+      loadProfessionnels();
     };
 
-    loadProfessionnels();
+    globalThis.window?.addEventListener('focus', handleFocus);
+    globalThis.document?.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      globalThis.clearInterval(intervalId);
+      globalThis.window?.removeEventListener('focus', handleFocus);
+      globalThis.document?.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   const showNotif = (type: 'success' | 'error', message: string) => {
@@ -44,30 +68,58 @@ const Validation = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleApprouver = async (id: string) => {
+  const handleDecision = async (id: string, action: 'approve' | 'reject') => {
+    const motif = decisionMotif.trim();
+
+    if (!motif) {
+      setDecisionError('Le motif de la décision est requis.');
+      return;
+    }
+
     try {
-      await approveProfessionnel(id);
-      setProfessionnels(prev => prev.filter(p => p.id !== id));
-      setShowDocumentModal(false);
-      showNotif('success', 'Professionnel approuvé avec succès.');
+      if (action === 'approve') {
+        const response = await approveProfessionnel(id, motif);
+        setProfessionnels(prev => prev.filter(p => p.id !== id));
+        if (response.professionnel) {
+          setSelectedPro(response.professionnel);
+        }
+        setDecisionResult({ action, motif, professionnel: response.professionnel });
+      } else {
+        const response = await rejectProfessionnel(id, motif);
+        setProfessionnels(prev => prev.filter(p => p.id !== id));
+        if (response.professionnel) {
+          setSelectedPro(response.professionnel);
+        }
+        setDecisionResult({ action, motif, professionnel: response.professionnel });
+      }
+      setDecisionMotif('');
+      setDecisionError('');
+      showNotif(
+        action === 'approve' ? 'success' : 'error',
+        action === 'approve'
+          ? 'Professionnel approuvé avec motif enregistré.'
+          : 'Demande rejetée avec motif enregistré.'
+      );
     } catch {
-      showNotif('error', 'Erreur lors de l’approbation.');
+      showNotif('error', action === 'approve' ? 'Erreur lors de l’approbation.' : 'Erreur lors du rejet.');
     }
   };
 
-  const handleRejeter = async (id: string) => {
-    try {
-      await rejectProfessionnel(id, 'Rejeté par un administrateur');
-      setProfessionnels(prev => prev.filter(p => p.id !== id));
-      setShowDocumentModal(false);
-      showNotif('error', 'Demande d\'inscription rejetée.');
-    } catch {
-      showNotif('error', 'Erreur lors du rejet.');
-    }
-  };
-
-  const handleVoirDocument = (pro: Professionnel) => {
+  const handleVoirDocument = (pro: PendingProfessional) => {
     setSelectedPro(pro);
+    setSelectedDecision(null);
+    setDecisionResult(null);
+    setDecisionMotif('');
+    setDecisionError('');
+    setShowDocumentModal(true);
+  };
+
+  const handleOpenDecision = (pro: PendingProfessional, action: 'approve' | 'reject') => {
+    setSelectedPro(pro);
+    setSelectedDecision(action);
+    setDecisionResult(null);
+    setDecisionMotif('');
+    setDecisionError('');
     setShowDocumentModal(true);
   };
 
@@ -122,7 +174,7 @@ const Validation = () => {
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: '#f3f4f6' }}>
-                {professionnels.map(pro => (
+                {professionnelsPagines.map(pro => (
                   <tr key={pro.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -153,11 +205,11 @@ const Validation = () => {
                           style={{ backgroundColor: 'var(--primary-teal)' }}>
                           <i className="ri-file-text-line mr-1"></i>Document
                         </button>
-                        <button onClick={() => handleApprouver(pro.id)}
+                        <button onClick={() => handleOpenDecision(pro, 'approve')}
                           className="px-2.5 py-1.5 rounded-lg text-white text-xs font-medium bg-green-600 hover:bg-green-700 cursor-pointer whitespace-nowrap">
                           <i className="ri-check-line mr-1"></i>Approuver
                         </button>
-                        <button onClick={() => handleRejeter(pro.id)}
+                        <button onClick={() => handleOpenDecision(pro, 'reject')}
                           className="px-2.5 py-1.5 rounded-lg text-white text-xs font-medium bg-red-500 hover:bg-red-600 cursor-pointer whitespace-nowrap">
                           <i className="ri-close-line mr-1"></i>Rejeter
                         </button>
@@ -170,6 +222,15 @@ const Validation = () => {
           </div>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        start={start}
+        end={end}
+        total={professionnels.length}
+        onPageChange={setPage}
+      />
 
       {/* Modal Document */}
       {showDocumentModal && selectedPro && (
@@ -210,17 +271,106 @@ const Validation = () => {
                   </div>
                 ))}
               </div>
+
+              {Array.isArray(selectedPro.documents) && selectedPro.documents.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold mb-2" style={{ color: 'var(--dark-brown)' }}>Documents transmis</p>
+                  <div className="space-y-2">
+                    {selectedPro.documents.map((document: Record<string, any>, index: number) => (
+                      <div key={`${document.name || 'doc'}-${index}`} className="flex items-center justify-between gap-3 p-3 rounded-xl border" style={{ borderColor: '#EAD7C8' }}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: 'var(--dark-brown)' }}>{document.name || 'Document'}</p>
+                          <p className="text-xs text-gray-500 truncate">{document.mime || document.type || 'Fichier'}</p>
+                        </div>
+                        <a
+                          href={document.url || selectedPro.documentUrl || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg text-white whitespace-nowrap"
+                          style={{ backgroundColor: 'var(--primary-teal)' }}
+                        >
+                          Ouvrir
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
+                  Motif de {selectedDecision === 'approve' ? 'l’approbation' : 'la décision'}
+                </label>
+                <textarea
+                  value={decisionMotif}
+                  onChange={(e) => {
+                    setDecisionMotif(e.target.value);
+                    if (decisionError) setDecisionError('');
+                  }}
+                  rows={4}
+                  placeholder="Expliquez brièvement pourquoi vous acceptez ou rejetez cette demande..."
+                  aria-invalid={!!decisionError}
+                  className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] resize-none ${decisionError ? 'border-red-400' : 'border-gray-300'}`}
+                />
+                {decisionError && <p className="mt-1 text-xs text-red-500">{decisionError}</p>}
+              </div>
+
+              {decisionResult && (
+                <div className="mt-5 p-4 rounded-xl border" style={{ borderColor: decisionResult.action === 'approve' ? '#BBF7D0' : '#FECACA', backgroundColor: decisionResult.action === 'approve' ? '#F0FDF4' : '#FEF2F2' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className={`${decisionResult.action === 'approve' ? 'ri-check-line text-green-600' : 'ri-close-line text-red-600'} text-lg`}></i>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--dark-brown)' }}>
+                      Décision enregistrée
+                    </p>
+                  </div>
+                  <p className="text-sm mb-2" style={{ color: 'var(--dark-brown)' }}>
+                    {decisionResult.action === 'approve' ? 'Professionnel approuvé.' : 'Demande rejetée.'}
+                  </p>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    <strong>Motif :</strong> {decisionResult.motif}
+                  </p>
+                  {decisionResult.professionnel?.decisionDate && (
+                    <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                      <strong>Date :</strong> {new Date(decisionResult.professionnel.decisionDate).toLocaleString('fr-FR')}
+                    </p>
+                  )}
+                  {decisionResult.professionnel?.decisionStatus && (
+                    <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                      <strong>Statut :</strong> {decisionResult.professionnel.decisionStatus}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t flex gap-3" style={{ borderColor: '#EAD7C8' }}>
-              <button onClick={() => handleRejeter(selectedPro.id)}
-                className="flex-1 py-2.5 rounded-lg text-white text-sm font-medium bg-red-500 hover:bg-red-600 cursor-pointer whitespace-nowrap">
-                <i className="ri-close-line mr-1.5"></i>Rejeter
-              </button>
-              <button onClick={() => handleApprouver(selectedPro.id)}
-                className="flex-1 py-2.5 rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 cursor-pointer whitespace-nowrap">
-                <i className="ri-check-line mr-1.5"></i>Approuver
-              </button>
+              {decisionResult ? (
+                <button
+                  onClick={() => {
+                    setShowDocumentModal(false);
+                    setSelectedPro(null);
+                    setSelectedDecision(null);
+                    setDecisionResult(null);
+                    setDecisionMotif('');
+                    setDecisionError('');
+                  }}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-medium bg-gray-700 hover:bg-gray-800 cursor-pointer whitespace-nowrap">
+                  Fermer
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleDecision(selectedPro.id, 'reject')}
+                    className="flex-1 py-2.5 rounded-lg text-white text-sm font-medium bg-red-500 hover:bg-red-600 cursor-pointer whitespace-nowrap">
+                    <i className="ri-close-line mr-1.5"></i>Rejeter
+                  </button>
+                  <button
+                    onClick={() => handleDecision(selectedPro.id, 'approve')}
+                    className="flex-1 py-2.5 rounded-lg text-white text-sm font-medium bg-green-600 hover:bg-green-700 cursor-pointer whitespace-nowrap">
+                    <i className="ri-check-line mr-1.5"></i>Approuver
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

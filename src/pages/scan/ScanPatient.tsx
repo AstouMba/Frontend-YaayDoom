@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import jsQR from 'jsqr';
 import { useAuth } from '../../context/AuthContext';
-import { scanPatient } from '../../features/professionnel/services/professionnelService';
+import { scanPatient } from '../../application/professionnel';
 
 interface PatientData {
   id: string;
@@ -30,35 +31,134 @@ const ScanPatient = () => {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-  const [qrInput, setQrInput] = useState('');
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const scanLoopRef = useRef<ReturnType<typeof globalThis.setInterval> | null>(null);
+  const scanLockRef = useRef(false);
+
+  const stopCamera = () => {
+    if (scanLoopRef.current !== null) {
+      globalThis.clearInterval(scanLoopRef.current);
+      scanLoopRef.current = null;
+    }
+
+    const stream = streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setScanning(false);
+    setCameraActive(false);
+    setCameraReady(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  const getCanvas = () => {
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement('canvas');
+    }
+
+    return canvasRef.current;
+  };
+
+  const decodeQrFromCanvas = (canvas: HTMLCanvasElement): string => {
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Impossible de lire cette image.');
+    }
+
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (!qrCode?.data) {
+      throw new Error('Aucun QR code détecté.');
+    }
+
+    return qrCode.data.trim();
+  };
 
   const decodeQrFromImageFile = async (file: File): Promise<string> => {
     if (!file.type.startsWith('image/')) {
       throw new Error('Format de fichier non supporte. Choisissez une image.');
     }
 
-    const BarcodeDetectorCtor = (window as any).BarcodeDetector;
-    if (!BarcodeDetectorCtor) {
-      throw new Error(
-        'Ce navigateur ne supporte pas le decodage QR image. Utilisez Chrome/Edge ou saisissez le code manuellement.'
-      );
-    }
-
     const bitmap = await createImageBitmap(file);
     try {
-      const detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
-      const results = await detector.detect(bitmap);
-      const qrValue = results?.[0]?.rawValue?.trim();
+      const canvas = getCanvas();
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
 
-      if (!qrValue) {
-        throw new Error('Aucun QR code detecte dans cette image.');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('Impossible de décoder cette image.');
       }
 
-      return qrValue;
+      context.drawImage(bitmap, 0, 0);
+      return decodeQrFromCanvas(canvas);
     } finally {
       bitmap.close();
     }
+  };
+
+  const waitForVideoReady = (video: HTMLVideoElement) =>
+    new Promise<void>((resolve, reject) => {
+      const timeoutId = globalThis.setTimeout(() => {
+        cleanup();
+        reject(new Error('La caméra ne renvoie pas d’image.'));
+      }, 5000);
+
+      const cleanup = () => {
+        globalThis.clearTimeout(timeoutId);
+        video.removeEventListener('loadedmetadata', onReady);
+        video.removeEventListener('canplay', onReady);
+      };
+
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+
+      video.addEventListener('loadedmetadata', onReady);
+      video.addEventListener('canplay', onReady);
+    });
+
+  const looksLikeBlackFrame = (video: HTMLVideoElement) => {
+    const canvas = getCanvas();
+    const width = 80;
+    const height = 60;
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) return false;
+
+    context.drawImage(video, 0, 0, width, height);
+    const { data } = context.getImageData(0, 0, width, height);
+
+    let brightPixels = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      if (brightness > 20) {
+        brightPixels += 1;
+      }
+    }
+
+    return brightPixels < (width * height) / 20;
   };
 
   const normalizePatient = (result: any): PatientData => {
@@ -90,9 +190,12 @@ const ScanPatient = () => {
   };
 
   const runScan = async (code: string) => {
+    if (scanLockRef.current) return;
+
     const value = code.trim();
     if (!value) return;
 
+    scanLockRef.current = true;
     setScanning(true);
     setError('');
     setInfo('');
@@ -105,10 +208,111 @@ const ScanPatient = () => {
       setError('Patient non trouve. Verifiez le code QR.');
     } finally {
       setScanning(false);
+      scanLockRef.current = false;
     }
   };
 
-  const handleScan = () => runScan(qrInput);
+  const startCameraScan = async (facingMode: 'environment' | 'user' = cameraFacing) => {
+    setError('');
+    setInfo('');
+    setCameraFacing(facingMode);
+
+    const mediaDevices = globalThis.navigator?.mediaDevices;
+
+    if (!mediaDevices?.getUserMedia) {
+      setError('La caméra n’est pas disponible sur cet appareil.');
+      return;
+    }
+
+    try {
+      const videoEl = videoRef.current;
+      if (!videoEl) {
+        setError('Impossible d’ouvrir la caméra.');
+        return;
+      }
+
+      const openStream = async (constraints: MediaStreamConstraints) =>
+        mediaDevices.getUserMedia({
+          ...constraints,
+          audio: false,
+        });
+
+      let stream: MediaStream;
+      try {
+        stream = await openStream({
+          video: {
+            facingMode: { ideal: facingMode },
+          },
+        });
+      } catch {
+        stream = await openStream({ video: true });
+      }
+
+      streamRef.current = stream;
+      setCameraActive(true);
+
+      videoEl.srcObject = stream;
+      await waitForVideoReady(videoEl);
+      await videoEl.play().catch(() => {});
+
+      if (!videoEl.videoWidth || !videoEl.videoHeight) {
+        throw new Error('La caméra ne renvoie pas d’image.');
+      }
+
+      if (looksLikeBlackFrame(videoEl)) {
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+
+        const fallbackStream = await openStream({ video: true });
+        streamRef.current = fallbackStream;
+        videoEl.srcObject = fallbackStream;
+        await waitForVideoReady(videoEl);
+        await videoEl.play().catch(() => {});
+
+        if (!videoEl.videoWidth || !videoEl.videoHeight || looksLikeBlackFrame(videoEl)) {
+          throw new Error('La caméra reste noire sur cet appareil.');
+        }
+      }
+
+      setCameraReady(true);
+
+      scanLoopRef.current = globalThis.setInterval(async () => {
+        if (!videoRef.current || scanLockRef.current) return;
+
+        try {
+          const video = videoRef.current;
+          if (!video.videoWidth || !video.videoHeight) return;
+
+          const canvas = getCanvas();
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          const context = canvas.getContext('2d');
+          if (!context) return;
+
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const rawValue = decodeQrFromCanvas(canvas);
+
+          if (rawValue) {
+            stopCamera();
+            await runScan(rawValue);
+          }
+        } catch {
+          // On garde la caméra ouverte et on réessaie au prochain tick.
+        }
+      }, 700);
+    } catch {
+      stopCamera();
+      setError('Impossible d’activer la caméra. Vérifiez les permissions ou essayez l’import d’image.');
+    }
+  };
+
+  const toggleCameraFacing = async () => {
+    const nextFacing = cameraFacing === 'environment' ? 'user' : 'environment';
+    stopCamera();
+    setCameraFacing(nextFacing);
+    await startCameraScan(nextFacing);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -184,7 +388,7 @@ const ScanPatient = () => {
               Scanner une patiente
             </h1>
             <p className="text-sm text-gray-600">
-              Entrez le code QR (ex: `p-1`, `1`, nom du bebe) pour acceder au dossier
+              Scannez le QR de la carte avec la caméra ou importez une image QR.
             </p>
           </div>
 
@@ -206,23 +410,86 @@ const ScanPatient = () => {
           )}
 
           <div className="space-y-4">
-            <input
-              type="text"
-              value={qrInput}
-              onChange={(e) => setQrInput(e.target.value)}
-              placeholder="Saisir le code QR"
-              className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
+            <div className="rounded-lg border border-gray-200 overflow-hidden bg-black/5">
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  className="w-full aspect-video bg-black object-cover"
+                  playsInline
+                  muted
+                  autoPlay
+                  style={{ opacity: cameraActive ? 1 : 0, position: cameraActive ? 'relative' as const : 'absolute' as const, inset: cameraActive ? undefined : 0 }}
+                />
+                {cameraActive ? (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-44 h-44 border-2 border-dashed border-white/80 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.18)]" />
+                  </div>
+                ) : (
+                <div className="aspect-video flex flex-col items-center justify-center gap-3 text-center px-4">
+                  <i className="ri-camera-line text-4xl" style={{ color: 'var(--primary-teal)' }}></i>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Aucune caméra active</p>
+                    <p className="text-xs text-gray-500">
+                      Lancez la caméra pour scanner le QR en direct.
+                    </p>
+                  </div>
+                </div>
+                )}
+              </div>
+            </div>
 
-            <button
-              onClick={handleScan}
-              disabled={scanning || !qrInput.trim()}
-              className="w-full h-12 rounded-lg text-white font-medium disabled:opacity-50"
-              style={{ backgroundColor: 'var(--primary-teal)' }}
+            {cameraActive && (
+              <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                <div className="flex items-center gap-2">
+                  <i className="ri-focus-3-line text-base"></i>
+                  <span>Placez le QR au centre du cadre pour lancer le scan.</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={cameraActive ? toggleCameraFacing : () => startCameraScan(cameraFacing)}
+                className="flex-1 h-12 rounded-lg text-white font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ backgroundColor: 'var(--primary-orange)' }}
+              >
+                <i className={cameraActive ? 'ri-camera-switch-line' : 'ri-camera-line'}></i>
+                {cameraActive
+                  ? 'Basculer caméra avant/arrière'
+                  : `Caméra ${cameraFacing === 'environment' ? 'arrière' : 'avant'}`}
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  stopCamera();
+                  setCameraReady(false);
+                }}
+                className="flex-1 h-12 rounded-lg border font-medium flex items-center justify-center gap-2 hover:bg-gray-50"
+                style={{ borderColor: '#DDD0C8', color: 'var(--dark-brown)' }}
+              >
+                <i className="ri-reset-left-line"></i>
+                Réinitialiser
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-500 flex items-center gap-2">
+              <i className="ri-information-line"></i>
+              {cameraReady
+                ? `Caméra ${cameraFacing === 'user' ? 'avant' : 'arrière'} prête, placez le QR dans le cadre.`
+                : 'Vous pouvez importer une image QR si besoin.'}
+            </div>
+
+            <label
+              htmlFor="qr-upload"
+              className="w-full h-12 flex items-center justify-center rounded-lg border-2 border-dashed font-medium text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+              style={{ borderColor: 'var(--primary-teal)', color: 'var(--primary-teal)' }}
             >
-              {scanning ? 'Scan en cours...' : 'Scanner'}
-            </button>
-
+              Importer une image QR
+            </label>
             <input
               ref={fileInputRef}
               type="file"
@@ -231,13 +498,6 @@ const ScanPatient = () => {
               className="hidden"
               id="qr-upload"
             />
-            <label
-              htmlFor="qr-upload"
-              className="w-full h-12 flex items-center justify-center rounded-lg border-2 border-dashed font-medium text-sm hover:bg-gray-50 transition-colors cursor-pointer"
-              style={{ borderColor: 'var(--primary-teal)', color: 'var(--primary-teal)' }}
-            >
-              Importer une image QR (decodage automatique)
-            </label>
           </div>
         </div>
       </main>

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllConsultations } from '../../features/professionnel/services/professionnelService';
+import { getAllConsultations } from '../../application/professionnel';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 type FilterType = 'TOUS' | 'Consultation prénatale' | 'Échographie' | 'Consultation de suivi' | 'Consultation d\'urgence';
 
@@ -36,6 +38,18 @@ const Consultations = () => {
       return matchSearch && matchType;
     });
   }, [consultations, searchTerm, filterType]);
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: consultationsPaginees,
+    start,
+    end,
+  } = usePagination(filteredConsultations, 8);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterType, setPage]);
 
   return (
     <div className="p-6 max-w-full">
@@ -137,7 +151,7 @@ const Consultations = () => {
       </div>
 
       <div className="space-y-4">
-        {filteredConsultations.map((consultation) => (
+        {consultationsPaginees.map((consultation) => (
           <div key={consultation.id} className="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
               <div className="flex items-start gap-3">
@@ -195,6 +209,15 @@ const Consultations = () => {
           <p className="text-sm text-gray-500">Aucune consultation trouvee</p>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        start={start}
+        end={end}
+        total={filteredConsultations.length}
+        onPageChange={setPage}
+      />
     </div>
   );
 };
