@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getPatients, getConsultations, getGrossesses, getVaccinationsByPatient, scanPatient } from '../../application/professionnel';
+import { getPatients, getConsultations, getGrossesses, scanPatient } from '../../application/professionnel';
+import { getVaccinationsByPatient } from '../../application/professionnel/getVaccinationsByPatient';
 import type {
   Consultation,
   GrossesseProfessionnelle,
@@ -200,8 +201,12 @@ const DossierFamilial = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {vaccinations.map((vaccination) => (
             <div key={vaccination.id} className="p-4 rounded-lg border border-gray-200">
-              <p className="font-semibold" style={{ color: 'var(--dark-brown)' }}>{vaccination.nom}</p>
-              <p className="text-sm text-gray-600">{vaccination.dateAdministre ? `Administré le ${vaccination.dateAdministre}` : `Prévu le ${vaccination.datePrevu}`}</p>
+              <p className="font-semibold" style={{ color: 'var(--dark-brown)' }}>{vaccination.vaccin}</p>
+              <p className="text-sm text-gray-600">
+                {vaccination.statut === 'ADMINISTRE'
+                  ? `Administré le ${vaccination.dateAdministration}`
+                  : `Prévu le ${vaccination.dateAdministration}`}
+              </p>
               <p className="text-xs mt-2 uppercase tracking-wide" style={{ color: 'var(--primary-teal)' }}>
                 {vaccination.statut}
               </p>

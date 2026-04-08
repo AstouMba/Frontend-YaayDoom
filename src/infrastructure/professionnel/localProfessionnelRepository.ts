@@ -18,8 +18,9 @@ const normalizeGrossesseStatut = (status: string | undefined | null): GrossesseP
 };
 
 const normalizeVaccinationStatut = (vaccin: Record<string, any>): Vaccination['statut'] => {
-  if (vaccin.dateAdministre || vaccin.date_vaccination) return 'completed';
-  return 'upcoming';
+  if (vaccin.dateAdministre || vaccin.date_vaccination) return 'ADMINISTRE';
+  if (vaccin.prochaine_dose || vaccin.prochainRappel) return 'A_VENIR';
+  return 'A_VENIR';
 };
 
 const mapPatient = (bebe: Record<string, any>): Patient => ({
