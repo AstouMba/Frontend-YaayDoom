@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { administrerVaccin, getVaccinations } from '../../features/professionnel/services/professionnelService';
+import { administrerVaccin, getVaccinations } from '../../application/professionnel';
+import Pagination from '../../components/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 interface Vaccin {
   id: string;
@@ -31,14 +33,14 @@ const VaccinationsPro = () => {
   const [vaccinations, setVaccinations] = useState<VaccinationRecord[]>([]);
 
   const calendrierVaccinal: Vaccin[] = [
-    { id: 1, nom: 'BCG', age: 'A la naissance', description: 'Vaccin contre la tuberculose' },
-    { id: 2, nom: 'Polio 0', age: 'A la naissance', description: 'Premiere dose de vaccin contre la poliomyelite' },
-    { id: 3, nom: 'Pentavalent 1', age: '6 semaines', description: 'DTC-HepB-Hib (1ere dose)' },
-    { id: 4, nom: 'Pentavalent 2', age: '10 semaines', description: 'DTC-HepB-Hib (2eme dose)' },
-    { id: 5, nom: 'Pentavalent 3', age: '14 semaines', description: 'DTC-HepB-Hib (3eme dose)' },
-    { id: 6, nom: 'Rougeole-Rubeole 1', age: '9 mois', description: 'Premiere dose RR' },
-    { id: 7, nom: 'Fievre jaune', age: '9 mois', description: 'Vaccin contre la fievre jaune' },
-    { id: 8, nom: 'Rougeole-Rubeole 2', age: '15 mois', description: 'Deuxieme dose RR (rappel)' },
+    { id: '1', nom: 'BCG', age: 'A la naissance', description: 'Vaccin contre la tuberculose' },
+    { id: '2', nom: 'Polio 0', age: 'A la naissance', description: 'Premiere dose de vaccin contre la poliomyelite' },
+    { id: '3', nom: 'Pentavalent 1', age: '6 semaines', description: 'DTC-HepB-Hib (1ere dose)' },
+    { id: '4', nom: 'Pentavalent 2', age: '10 semaines', description: 'DTC-HepB-Hib (2eme dose)' },
+    { id: '5', nom: 'Pentavalent 3', age: '14 semaines', description: 'DTC-HepB-Hib (3eme dose)' },
+    { id: '6', nom: 'Rougeole-Rubeole 1', age: '9 mois', description: 'Premiere dose RR' },
+    { id: '7', nom: 'Fievre jaune', age: '9 mois', description: 'Vaccin contre la fievre jaune' },
+    { id: '8', nom: 'Rougeole-Rubeole 2', age: '15 mois', description: 'Deuxieme dose RR (rappel)' },
   ];
 
   const loadVaccinations = async () => {
@@ -73,6 +75,18 @@ const VaccinationsPro = () => {
       return matchSearch && matchStatut;
     });
   }, [vaccinations, searchTerm, filterStatut]);
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems: vaccinationsPaginees,
+    start,
+    end,
+  } = usePagination(filteredVaccinations, 8);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterStatut, setPage]);
 
   const getStatutBadge = (statut: string) => {
     switch (statut) {
@@ -247,7 +261,7 @@ const VaccinationsPro = () => {
       </div>
 
       <div className="space-y-4">
-        {filteredVaccinations.map((vaccination) => (
+        {vaccinationsPaginees.map((vaccination) => (
           <div key={vaccination.id} className="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
               <div className="flex items-start gap-3">
@@ -323,6 +337,15 @@ const VaccinationsPro = () => {
           <p className="text-sm text-gray-500">Aucune vaccination trouvee</p>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        start={start}
+        end={end}
+        total={filteredVaccinations.length}
+        onPageChange={setPage}
+      />
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import QRCard from '../../components/QRCard';
 import ModalGrossesse from '../../components/ModalGrossesse';
-import { createGrossesse, getGrossesse } from '../../features/maman/services/mamanService';
+import { createGrossesse, getGrossesse } from '../../application/maman';
 
 type GrossesseStatut = 'AUCUNE' | 'EN_ATTENTE' | 'VALIDEE';
 

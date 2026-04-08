@@ -4,7 +4,7 @@ import {
   Chart, BarController, BarElement, CategoryScale, LinearScale,
   DoughnutController, ArcElement, Tooltip, Legend,
 } from 'chart.js';
-import { getStatistiques } from '../../features/admin/services/adminService';
+import { getStatistiques } from '../../application/admin';
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, DoughnutController, ArcElement, Tooltip, Legend);
 
@@ -37,7 +37,9 @@ const DashboardAdmin = () => {
     };
 
     loadStats();
+  }, []);
 
+  useEffect(() => {
     if (barRef.current) {
       barInstance.current?.destroy();
       const ctx = barRef.current.getContext('2d');

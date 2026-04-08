@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getEvolutionGrossesse, getGrossesse, getRendezVous } from '../../features/maman/services/mamanService';
+import { getEvolutionGrossesse, getGrossesse, getRendezVous } from '../../application/maman';
 
 type Tab = 'evolution' | 'rendezvous' | 'suivi';
 

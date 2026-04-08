@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createGrossesse } from '../../features/maman/services/mamanService';
+import { createGrossesse } from '../../application/maman';
 
 export default function CreateGrossesse() {
   const navigate = useNavigate();
+  const [errors, setErrors] = useState<{
+    dateDernieresRegles?: string;
+    antecedentsMedicaux?: string;
+    general?: string;
+  }>({});
   const [formData, setFormData] = useState({
     dateDernieresRegles: '',
     nombreGrossessesPrecedentes: '0',
@@ -14,6 +19,22 @@ export default function CreateGrossesse() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: typeof errors = {};
+
+    if (!formData.dateDernieresRegles) {
+      nextErrors.dateDernieresRegles = 'La date de vos dernières règles est requise';
+    }
+
+    if (formData.antecedentsMedicaux.length > 500) {
+      nextErrors.antecedentsMedicaux = 'Maximum 500 caractères';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
     try {
       await createGrossesse({
         dateDernieresRegles: formData.dateDernieresRegles,
@@ -31,6 +52,7 @@ export default function CreateGrossesse() {
       ...formData,
       [e.target.name]: e.target.value
     });
+    setErrors(prev => ({ ...prev, [e.target.name]: undefined, general: undefined }));
   };
 
   return (
@@ -84,9 +106,10 @@ export default function CreateGrossesse() {
                 name="dateDernieresRegles"
                 value={formData.dateDernieresRegles}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 transition-all"
+                aria-invalid={!!errors.dateDernieresRegles}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${errors.dateDernieresRegles ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {errors.dateDernieresRegles && <p className="mt-1 text-xs text-red-500">{errors.dateDernieresRegles}</p>}
               <p className="mt-1 text-xs text-gray-500">
                 Cette date permet de calculer votre terme et votre semaine de grossesse
               </p>
@@ -97,11 +120,10 @@ export default function CreateGrossesse() {
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--dark-brown)' }}>
                 Nombre de grossesses précédentes <span className="text-red-500">*</span>
               </label>
-              <select
+                <select
                 name="nombreGrossessesPrecedentes"
                 value={formData.nombreGrossessesPrecedentes}
                 onChange={handleChange}
-                required
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 transition-all"
               >
                 <option value="0">Première grossesse</option>

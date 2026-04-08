@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { getBebe, getVaccins } from '../../features/maman/services/mamanService';
+import { getBebe, getVaccins } from '../../application/maman';
 
 export default function Carte() {
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);

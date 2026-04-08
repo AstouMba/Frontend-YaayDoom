@@ -1,0 +1,12 @@
+export { getStatistiques } from './getStatistiques';
+export { getUtilisateurs } from './getUtilisateurs';
+export { getAllUsers } from './getAllUsers';
+export { getUtilisateurById } from './getUtilisateurById';
+export { updateUtilisateur } from './updateUtilisateur';
+export { updateUserRole } from './updateUserRole';
+export { updateUserStatus } from './updateUserStatus';
+export { deleteUtilisateur } from './deleteUtilisateur';
+export { deleteUser } from './deleteUser';
+export { getProfessionnelsEnAttente } from './getProfessionnelsEnAttente';
+export { approveProfessionnel } from './approveProfessionnel';
+export { rejectProfessionnel } from './rejectProfessionnel';

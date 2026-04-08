@@ -20,6 +20,11 @@ interface ConsultationForm {
   notes: string;
 }
 
+interface ConsultationErrors {
+  type?: string;
+  date?: string;
+}
+
 interface AccouchementForm {
   date: string;
   heure: string;
@@ -33,6 +38,20 @@ interface AccouchementForm {
   notes: string;
 }
 
+interface AccouchementBebeErrors {
+  prenom?: string;
+  sexe?: string;
+  poids?: string;
+  taille?: string;
+}
+
+interface AccouchementErrors {
+  date?: string;
+  heure?: string;
+  type?: string;
+  bebe: AccouchementBebeErrors[];
+}
+
 interface RendezVousForm {
   type: string;
   date: string;
@@ -42,6 +61,14 @@ interface RendezVousForm {
   notes: string;
 }
 
+interface RendezVousErrors {
+  type?: string;
+  date?: string;
+  heure?: string;
+  professionnel?: string;
+  lieu?: string;
+}
+
 interface VaccinForm {
   vaccin: string;
   dateAdministration: string;
@@ -49,11 +76,21 @@ interface VaccinForm {
   notes: string;
 }
 
+interface VaccinErrors {
+  vaccin?: string;
+  dateAdministration?: string;
+}
+
 interface MesuresForm {
   poids: string;
   taille: string;
   perimetreCrânien: string;
   notes: string;
+}
+
+interface MesuresErrors {
+  poids?: string;
+  taille?: string;
 }
 
 // ─── Panel Consultation Maman ────────────────────────────────────────────────
@@ -65,6 +102,9 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
   const [showConsultationModal, setShowConsultationModal] = useState(false);
   const [showAccouncementModal, setShowAccouncementModal] = useState(false);
   const [showRdvModal, setShowRdvModal] = useState(false);
+  const [consultationErrors, setConsultationErrors] = useState<ConsultationErrors>({});
+  const [accouchementErrors, setAccouchementErrors] = useState<AccouchementErrors>({ bebe: [{ }] });
+  const [rdvErrors, setRdvErrors] = useState<RendezVousErrors>({});
 
   // Formulaires
   const [consultationForm, setConsultationForm] = useState<ConsultationForm>({
@@ -94,21 +134,86 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
     notes: ''
   });
 
+  const clearConsultationError = (field: keyof ConsultationErrors) => {
+    setConsultationErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const clearAccouchementError = (field: keyof AccouchementErrors) => {
+    setAccouchementErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const clearAccouchementBebeError = (index: number, field: keyof AccouchementBebeErrors) => {
+    setAccouchementErrors((prev) => {
+      const bebe = [...prev.bebe];
+      bebe[index] = { ...bebe[index], [field]: undefined };
+      return { ...prev, bebe };
+    });
+  };
+
+  const clearRdvError = (field: keyof RendezVousErrors) => {
+    setRdvErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
   // Handlers
   const handleConsultationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: ConsultationErrors = {};
+
+    if (!consultationForm.type) nextErrors.type = 'Le type de consultation est requis';
+    if (!consultationForm.date) nextErrors.date = 'La date est requise';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setConsultationErrors(nextErrors);
+      return;
+    }
+
+    setConsultationErrors({});
     console.log('Consultation ajoutée:', consultationForm);
     setShowConsultationModal(false);
   };
 
   const handleAccouvementSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const bebeErrors = accouchementForm.bebe.map((bebe) => ({
+      prenom: bebe.prenom.trim() ? undefined : 'Le prénom est requis',
+      sexe: bebe.sexe.trim() ? undefined : 'Le sexe est requis',
+      poids: bebe.poids.trim() ? undefined : 'Le poids est requis',
+      taille: bebe.taille.trim() ? undefined : 'La taille est requise',
+    }));
+    const nextErrors: AccouchementErrors = {
+      date: accouchementForm.date ? undefined : "La date d'accouchement est requise",
+      heure: accouchementForm.heure ? undefined : "L'heure est requise",
+      type: accouchementForm.type ? undefined : "Le type d'accouchement est requis",
+      bebe: bebeErrors,
+    };
+
+    const hasBebeError = bebeErrors.some((err) => Object.values(err).some(Boolean));
+    if (nextErrors.date || nextErrors.heure || nextErrors.type || hasBebeError) {
+      setAccouchementErrors(nextErrors);
+      return;
+    }
+
+    setAccouchementErrors({ bebe: accouchementForm.bebe.map(() => ({})) });
     console.log('Accouchement enregistré:', accouchementForm);
     setShowAccouncementModal(false);
   };
 
   const handleRdvSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: RendezVousErrors = {};
+
+    if (!rdvForm.type) nextErrors.type = 'Le type de rendez-vous est requis';
+    if (!rdvForm.date) nextErrors.date = 'La date est requise';
+    if (!rdvForm.heure) nextErrors.heure = "L'heure est requise";
+    if (!rdvForm.professionnel.trim()) nextErrors.professionnel = 'Le professionnel est requis';
+    if (!rdvForm.lieu.trim()) nextErrors.lieu = 'Le lieu est requis';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setRdvErrors(nextErrors);
+      return;
+    }
+
+    setRdvErrors({});
     console.log('RDV planifié:', rdvForm);
     setShowRdvModal(false);
   };
@@ -355,15 +460,19 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                   </label>
                   <select
                     value={consultationForm.type}
-                    onChange={(e) => setConsultationForm({ ...consultationForm, type: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => {
+                      setConsultationForm({ ...consultationForm, type: e.target.value });
+                      clearConsultationError('type');
+                    }}
+                    aria-invalid={!!consultationErrors.type}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${consultationErrors.type ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option value="prénatale">Consultation prénatale</option>
                     <option value="échographie">Échographie</option>
                     <option value="suivi">Suivi</option>
                     <option value="urgence">Urgence</option>
                   </select>
+                  {consultationErrors.type && <p className="mt-1 text-xs text-red-500">{consultationErrors.type}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -374,10 +483,14 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                     <input
                       type="date"
                       value={consultationForm.date}
-                      onChange={(e) => setConsultationForm({ ...consultationForm, date: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setConsultationForm({ ...consultationForm, date: e.target.value });
+                        clearConsultationError('date');
+                      }}
+                      aria-invalid={!!consultationErrors.date}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${consultationErrors.date ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {consultationErrors.date && <p className="mt-1 text-xs text-red-500">{consultationErrors.date}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -497,13 +610,17 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
                       Date d'accouchement
                     </label>
-                    <input
+                  <input
                       type="date"
                       value={accouchementForm.date}
-                      onChange={(e) => setAccouchementForm({ ...accouchementForm, date: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setAccouchementForm({ ...accouchementForm, date: e.target.value });
+                        clearAccouchementError('date');
+                      }}
+                      aria-invalid={!!accouchementErrors.date}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.date ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {accouchementErrors.date && <p className="mt-1 text-xs text-red-500">{accouchementErrors.date}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -512,10 +629,14 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                     <input
                       type="time"
                       value={accouchementForm.heure}
-                      onChange={(e) => setAccouchementForm({ ...accouchementForm, heure: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setAccouchementForm({ ...accouchementForm, heure: e.target.value });
+                        clearAccouchementError('heure');
+                      }}
+                      aria-invalid={!!accouchementErrors.heure}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.heure ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {accouchementErrors.heure && <p className="mt-1 text-xs text-red-500">{accouchementErrors.heure}</p>}
                   </div>
                 </div>
 
@@ -525,14 +646,18 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                   </label>
                   <select
                     value={accouchementForm.type}
-                    onChange={(e) => setAccouchementForm({ ...accouchementForm, type: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => {
+                      setAccouchementForm({ ...accouchementForm, type: e.target.value });
+                      clearAccouchementError('type');
+                    }}
+                    aria-invalid={!!accouchementErrors.type}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${accouchementErrors.type ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option value="voie basse">Voie basse</option>
                     <option value="césarienne">Césarienne</option>
                     <option value="assistée">Voie basse assistée</option>
                   </select>
+                  {accouchementErrors.type && <p className="mt-1 text-xs text-red-500">{accouchementErrors.type}</p>}
                 </div>
 
                 {/* Sections pour chaque bébé */}
@@ -555,10 +680,12 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                               const newBebes = [...accouchementForm.bebe];
                               newBebes[index].prenom = e.target.value;
                               setAccouchementForm({ ...accouchementForm, bebe: newBebes });
+                              clearAccouchementBebeError(index, 'prenom');
                             }}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            required
+                            aria-invalid={!!accouchementErrors.bebe?.[index]?.prenom}
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.bebe?.[index]?.prenom ? 'border-red-400' : 'border-gray-300'}`}
                           />
+                          {accouchementErrors.bebe?.[index]?.prenom && <p className="mt-1 text-xs text-red-500">{accouchementErrors.bebe[index].prenom}</p>}
                         </div>
                         <div>
                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>
@@ -570,13 +697,15 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                               const newBebes = [...accouchementForm.bebe];
                               newBebes[index].sexe = e.target.value;
                               setAccouchementForm({ ...accouchementForm, bebe: newBebes });
+                              clearAccouchementBebeError(index, 'sexe');
                             }}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                            required
+                            aria-invalid={!!accouchementErrors.bebe?.[index]?.sexe}
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${accouchementErrors.bebe?.[index]?.sexe ? 'border-red-400' : 'border-gray-300'}`}
                           >
                             <option value="Garçon">Garçon</option>
                             <option value="Fille">Fille</option>
                           </select>
+                          {accouchementErrors.bebe?.[index]?.sexe && <p className="mt-1 text-xs text-red-500">{accouchementErrors.bebe[index].sexe}</p>}
                         </div>
                         <div>
                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>
@@ -591,10 +720,12 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                               const newBebes = [...accouchementForm.bebe];
                               newBebes[index].poids = e.target.value;
                               setAccouchementForm({ ...accouchementForm, bebe: newBebes });
+                              clearAccouchementBebeError(index, 'poids');
                             }}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            required
+                            aria-invalid={!!accouchementErrors.bebe?.[index]?.poids}
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.bebe?.[index]?.poids ? 'border-red-400' : 'border-gray-300'}`}
                           />
+                          {accouchementErrors.bebe?.[index]?.poids && <p className="mt-1 text-xs text-red-500">{accouchementErrors.bebe[index].poids}</p>}
                         </div>
                         <div>
                           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--dark-brown)' }}>
@@ -609,10 +740,12 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                               const newBebes = [...accouchementForm.bebe];
                               newBebes[index].taille = e.target.value;
                               setAccouchementForm({ ...accouchementForm, bebe: newBebes });
+                              clearAccouchementBebeError(index, 'taille');
                             }}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                            required
+                            aria-invalid={!!accouchementErrors.bebe?.[index]?.taille}
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.bebe?.[index]?.taille ? 'border-red-400' : 'border-gray-300'}`}
                           />
+                          {accouchementErrors.bebe?.[index]?.taille && <p className="mt-1 text-xs text-red-500">{accouchementErrors.bebe[index].taille}</p>}
                         </div>
                       </div>
                     </div>
@@ -683,9 +816,12 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                   </label>
                   <select
                     value={rdvForm.type}
-                    onChange={(e) => setRdvForm({ ...rdvForm, type: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => {
+                      setRdvForm({ ...rdvForm, type: e.target.value });
+                      clearRdvError('type');
+                    }}
+                    aria-invalid={!!rdvErrors.type}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${rdvErrors.type ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option value="Consultation prénatale">Consultation prénatale</option>
                     <option value="Échographie">Échographie</option>
@@ -696,6 +832,7 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                     <option value="Sage-femme">Sage-femme</option>
                     <option value="Pédiatre">Pédiatre</option>
                   </select>
+                  {rdvErrors.type && <p className="mt-1 text-xs text-red-500">{rdvErrors.type}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -706,10 +843,14 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                     <input
                       type="date"
                       value={rdvForm.date}
-                      onChange={(e) => setRdvForm({ ...rdvForm, date: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setRdvForm({ ...rdvForm, date: e.target.value });
+                        clearRdvError('date');
+                      }}
+                      aria-invalid={!!rdvErrors.date}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${rdvErrors.date ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {rdvErrors.date && <p className="mt-1 text-xs text-red-500">{rdvErrors.date}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -718,10 +859,14 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                     <input
                       type="time"
                       value={rdvForm.heure}
-                      onChange={(e) => setRdvForm({ ...rdvForm, heure: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setRdvForm({ ...rdvForm, heure: e.target.value });
+                        clearRdvError('heure');
+                      }}
+                      aria-invalid={!!rdvErrors.heure}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${rdvErrors.heure ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {rdvErrors.heure && <p className="mt-1 text-xs text-red-500">{rdvErrors.heure}</p>}
                   </div>
                 </div>
 
@@ -729,28 +874,36 @@ const ConsultationMamanPanel = ({ membre }: { membre: MembreFamilial }) => {
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
                     Professionnel de santé
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Dr. Fatou Sow"
-                    value={rdvForm.professionnel}
-                    onChange={(e) => setRdvForm({ ...rdvForm, professionnel: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
-                  />
+                    <input
+                      type="text"
+                      placeholder="Dr. Fatou Sow"
+                      value={rdvForm.professionnel}
+                      onChange={(e) => {
+                        setRdvForm({ ...rdvForm, professionnel: e.target.value });
+                        clearRdvError('professionnel');
+                      }}
+                      aria-invalid={!!rdvErrors.professionnel}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${rdvErrors.professionnel ? 'border-red-400' : 'border-gray-300'}`}
+                    />
+                  {rdvErrors.professionnel && <p className="mt-1 text-xs text-red-500">{rdvErrors.professionnel}</p>}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
                     Lieu
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Hôpital Principal de Dakar"
-                    value={rdvForm.lieu}
-                    onChange={(e) => setRdvForm({ ...rdvForm, lieu: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
-                  />
+                    <input
+                      type="text"
+                      placeholder="Hôpital Principal de Dakar"
+                      value={rdvForm.lieu}
+                      onChange={(e) => {
+                        setRdvForm({ ...rdvForm, lieu: e.target.value });
+                        clearRdvError('lieu');
+                      }}
+                      aria-invalid={!!rdvErrors.lieu}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${rdvErrors.lieu ? 'border-red-400' : 'border-gray-300'}`}
+                    />
+                  {rdvErrors.lieu && <p className="mt-1 text-xs text-red-500">{rdvErrors.lieu}</p>}
                 </div>
 
                 <div>
@@ -812,6 +965,8 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
     notes: ''
   });
 
+  const [vaccinErrors, setVaccinErrors] = useState<VaccinErrors>({});
+
   const [mesuresForm, setMesuresForm] = useState<MesuresForm>({
     poids: '',
     taille: '',
@@ -819,15 +974,47 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
     notes: ''
   });
 
+  const [mesuresErrors, setMesuresErrors] = useState<MesuresErrors>({});
+
+  const clearVaccinError = (field: keyof VaccinErrors) => {
+    setVaccinErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const clearMesuresError = (field: keyof MesuresErrors) => {
+    setMesuresErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
   // Handlers
   const handleVaccinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: VaccinErrors = {};
+
+    if (!vaccinForm.vaccin) nextErrors.vaccin = 'Le vaccin est requis';
+    if (!vaccinForm.dateAdministration) nextErrors.dateAdministration = "La date d'administration est requise";
+
+    if (Object.keys(nextErrors).length > 0) {
+      setVaccinErrors(nextErrors);
+      return;
+    }
+
+    setVaccinErrors({});
     console.log('Vaccin enregistré:', vaccinForm);
     setShowVaccinModal(false);
   };
 
   const handleMesuresSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: MesuresErrors = {};
+
+    if (!mesuresForm.poids) nextErrors.poids = 'Le poids est requis';
+    if (!mesuresForm.taille) nextErrors.taille = 'La taille est requise';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setMesuresErrors(nextErrors);
+      return;
+    }
+
+    setMesuresErrors({});
     console.log('Mesures enregistrées:', mesuresForm);
     setShowMesuresModal(false);
   };
@@ -1121,9 +1308,12 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
                   </label>
                   <select
                     value={vaccinForm.vaccin}
-                    onChange={(e) => setVaccinForm({ ...vaccinForm, vaccin: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => {
+                      setVaccinForm({ ...vaccinForm, vaccin: e.target.value });
+                      clearVaccinError('vaccin');
+                    }}
+                    aria-invalid={!!vaccinErrors.vaccin}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${vaccinErrors.vaccin ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option value="BCG">BCG</option>
                     <option value="Hépatite B">Hépatite B</option>
@@ -1135,6 +1325,7 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
                     <option value="Fièvre Jaune">Fièvre Jaune</option>
                     <option value="Méningite A">Méningite A</option>
                   </select>
+                  {vaccinErrors.vaccin && <p className="mt-1 text-xs text-red-500">{vaccinErrors.vaccin}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1145,10 +1336,14 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
                     <input
                       type="date"
                       value={vaccinForm.dateAdministration}
-                      onChange={(e) => setVaccinForm({ ...vaccinForm, dateAdministration: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setVaccinForm({ ...vaccinForm, dateAdministration: e.target.value });
+                        clearVaccinError('dateAdministration');
+                      }}
+                      aria-invalid={!!vaccinErrors.dateAdministration}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${vaccinErrors.dateAdministration ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {vaccinErrors.dateAdministration && <p className="mt-1 text-xs text-red-500">{vaccinErrors.dateAdministration}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -1230,10 +1425,14 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
                       step="0.01"
                       placeholder="5.5"
                       value={mesuresForm.poids}
-                      onChange={(e) => setMesuresForm({ ...mesuresForm, poids: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setMesuresForm({ ...mesuresForm, poids: e.target.value });
+                        clearMesuresError('poids');
+                      }}
+                      aria-invalid={!!mesuresErrors.poids}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${mesuresErrors.poids ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {mesuresErrors.poids && <p className="mt-1 text-xs text-red-500">{mesuresErrors.poids}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -1244,10 +1443,14 @@ const ConsultationBebePanel = ({ membre }: { membre: MembreFamilial }) => {
                       step="0.1"
                       placeholder="60"
                       value={mesuresForm.taille}
-                      onChange={(e) => setMesuresForm({ ...mesuresForm, taille: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => {
+                        setMesuresForm({ ...mesuresForm, taille: e.target.value });
+                        clearMesuresError('taille');
+                      }}
+                      aria-invalid={!!mesuresErrors.taille}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${mesuresErrors.taille ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {mesuresErrors.taille && <p className="mt-1 text-xs text-red-500">{mesuresErrors.taille}</p>}
                   </div>
                 </div>
 

@@ -5,7 +5,7 @@ import {
   addVaccination,
   createConsultation,
   registerAccouchement,
-} from '../../features/professionnel/services/professionnelService';
+} from '../../application/professionnel';
 
 interface PatientData {
   id: string;
@@ -19,6 +19,7 @@ interface PatientData {
     statut: 'EN_ATTENTE' | 'VALIDÉ';
   };
   bebe?: {
+    id: string;
     nom: string;
     dateNaissance: string;
     poids: string;
@@ -62,6 +63,31 @@ const ConsultationPatient = () => {
   const [showVaccinModal, setShowVaccinModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [consultationErrors, setConsultationErrors] = useState<{
+    type?: string;
+    date?: string;
+    notes?: string;
+    tensionArterielle?: string;
+    poids?: string;
+    general?: string;
+  }>({});
+  const [accouchementErrors, setAccouchementErrors] = useState<{
+    dateAccouchement?: string;
+    heureAccouchement?: string;
+    typeAccouchement?: string;
+    sexeBebe?: string;
+    poidsBebe?: string;
+    tailleBebe?: string;
+    notes?: string;
+    general?: string;
+  }>({});
+  const [vaccinErrors, setVaccinErrors] = useState<{
+    nomVaccin?: string;
+    dateAdministration?: string;
+    prochainRappel?: string;
+    notes?: string;
+    general?: string;
+  }>({});
 
   const [consultationForm, setConsultationForm] = useState<Consultation>({
     type: 'Consultation prénatale',
@@ -88,6 +114,21 @@ const ConsultationPatient = () => {
     notes: ''
   });
 
+  const updateConsultationForm = (field: keyof Consultation, value: string) => {
+    setConsultationForm((prev) => ({ ...prev, [field]: value }));
+    setConsultationErrors((prev) => ({ ...prev, [field]: undefined, general: undefined }));
+  };
+
+  const updateAccouchementForm = (field: keyof Accouchement, value: string) => {
+    setAccouchementForm((prev) => ({ ...prev, [field]: value }));
+    setAccouchementErrors((prev) => ({ ...prev, [field]: undefined, general: undefined }));
+  };
+
+  const updateVaccinForm = (field: keyof Vaccin, value: string) => {
+    setVaccinForm((prev) => ({ ...prev, [field]: value }));
+    setVaccinErrors((prev) => ({ ...prev, [field]: undefined, general: undefined }));
+  };
+
   // Rediriger si pas de données patient
   if (!patientData) {
     navigate('/scan-patient');
@@ -96,8 +137,20 @@ const ConsultationPatient = () => {
 
   const handleSubmitConsultation = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: typeof consultationErrors = {};
+
+    if (!consultationForm.type.trim()) nextErrors.type = 'Le type de consultation est requis';
+    if (!consultationForm.date) nextErrors.date = 'La date de consultation est requise';
+    if (consultationForm.notes.length > 500) nextErrors.notes = 'Maximum 500 caractères';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setConsultationErrors(nextErrors);
+      return;
+    }
+
     setSubmitting(true);
     setFeedback('');
+    setConsultationErrors({});
 
     try {
       await createConsultation(patientData.id, {
@@ -130,8 +183,23 @@ const ConsultationPatient = () => {
 
   const handleSubmitAccouchement = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: typeof accouchementErrors = {};
+
+    if (!accouchementForm.dateAccouchement) nextErrors.dateAccouchement = "La date d'accouchement est requise";
+    if (!accouchementForm.heureAccouchement) nextErrors.heureAccouchement = "L'heure d'accouchement est requise";
+    if (!accouchementForm.typeAccouchement.trim()) nextErrors.typeAccouchement = "Le type d'accouchement est requis";
+    if (!accouchementForm.poidsBebe.trim()) nextErrors.poidsBebe = 'Le poids du bébé est requis';
+    if (!accouchementForm.tailleBebe.trim()) nextErrors.tailleBebe = 'La taille du bébé est requise';
+    if (accouchementForm.notes.length > 500) nextErrors.notes = 'Maximum 500 caractères';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setAccouchementErrors(nextErrors);
+      return;
+    }
+
     setSubmitting(true);
     setFeedback('');
+    setAccouchementErrors({});
 
     try {
       await registerAccouchement(patientData.id, {
@@ -162,8 +230,20 @@ const ConsultationPatient = () => {
 
   const handleSubmitVaccin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: typeof vaccinErrors = {};
+
+    if (!vaccinForm.nomVaccin.trim()) nextErrors.nomVaccin = 'Le nom du vaccin est requis';
+    if (!vaccinForm.dateAdministration) nextErrors.dateAdministration = "La date d'administration est requise";
+    if (vaccinForm.notes.length > 500) nextErrors.notes = 'Maximum 500 caractères';
+
+    if (Object.keys(nextErrors).length > 0) {
+      setVaccinErrors(nextErrors);
+      return;
+    }
+
     setSubmitting(true);
     setFeedback('');
+    setVaccinErrors({});
 
     try {
       await addVaccination(patientData.id, {
@@ -400,15 +480,16 @@ const ConsultationPatient = () => {
                   </label>
                   <select
                     value={consultationForm.type}
-                    onChange={(e) => setConsultationForm({ ...consultationForm, type: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => updateConsultationForm('type', e.target.value)}
+                    aria-invalid={!!consultationErrors.type}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${consultationErrors.type ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option>Consultation prénatale</option>
                     <option>Échographie</option>
                     <option>Consultation de suivi</option>
                     <option>Consultation d'urgence</option>
                   </select>
+                  {consultationErrors.type && <p className="mt-1 text-xs text-red-500">{consultationErrors.type}</p>}
                 </div>
 
                 <div>
@@ -418,10 +499,11 @@ const ConsultationPatient = () => {
                   <input
                     type="date"
                     value={consultationForm.date}
-                    onChange={(e) => setConsultationForm({ ...consultationForm, date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
+                    onChange={(e) => updateConsultationForm('date', e.target.value)}
+                    aria-invalid={!!consultationErrors.date}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${consultationErrors.date ? 'border-red-400' : 'border-gray-300'}`}
                   />
+                  {consultationErrors.date && <p className="mt-1 text-xs text-red-500">{consultationErrors.date}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -433,7 +515,7 @@ const ConsultationPatient = () => {
                       type="text"
                       placeholder="120/80"
                       value={consultationForm.tensionArterielle}
-                      onChange={(e) => setConsultationForm({ ...consultationForm, tensionArterielle: e.target.value })}
+                      onChange={(e) => updateConsultationForm('tensionArterielle', e.target.value)}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
@@ -446,7 +528,7 @@ const ConsultationPatient = () => {
                       step="0.1"
                       placeholder="65.5"
                       value={consultationForm.poids}
-                      onChange={(e) => setConsultationForm({ ...consultationForm, poids: e.target.value })}
+                      onChange={(e) => updateConsultationForm('poids', e.target.value)}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     />
                   </div>
@@ -458,12 +540,13 @@ const ConsultationPatient = () => {
                   </label>
                   <textarea
                     value={consultationForm.notes}
-                    onChange={(e) => setConsultationForm({ ...consultationForm, notes: e.target.value })}
+                    onChange={(e) => updateConsultationForm('notes', e.target.value)}
                     rows={4}
                     placeholder="Observations médicales, recommandations..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
                     maxLength={500}
                   />
+                  {consultationErrors.notes && <p className="mt-1 text-xs text-red-500">{consultationErrors.notes}</p>}
                   <div className="text-xs text-gray-500 mt-1">Maximum 500 caractères</div>
                 </div>
               </div>
@@ -518,26 +601,28 @@ const ConsultationPatient = () => {
                     <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
                       Date d'accouchement
                     </label>
-                    <input
-                      type="date"
-                      value={accouchementForm.dateAccouchement}
-                      onChange={(e) => setAccouchementForm({ ...accouchementForm, dateAccouchement: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
-                      Heure d'accouchement
-                    </label>
-                    <input
-                      type="time"
-                      value={accouchementForm.heureAccouchement}
-                      onChange={(e) => setAccouchementForm({ ...accouchementForm, heureAccouchement: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={accouchementForm.dateAccouchement}
+                    onChange={(e) => updateAccouchementForm('dateAccouchement', e.target.value)}
+                    aria-invalid={!!accouchementErrors.dateAccouchement}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.dateAccouchement ? 'border-red-400' : 'border-gray-300'}`}
+                  />
+                  {accouchementErrors.dateAccouchement && <p className="mt-1 text-xs text-red-500">{accouchementErrors.dateAccouchement}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
+                    Heure d'accouchement
+                  </label>
+                  <input
+                    type="time"
+                    value={accouchementForm.heureAccouchement}
+                    onChange={(e) => updateAccouchementForm('heureAccouchement', e.target.value)}
+                    aria-invalid={!!accouchementErrors.heureAccouchement}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.heureAccouchement ? 'border-red-400' : 'border-gray-300'}`}
+                  />
+                  {accouchementErrors.heureAccouchement && <p className="mt-1 text-xs text-red-500">{accouchementErrors.heureAccouchement}</p>}
+                </div>
                 </div>
 
                 <div>
@@ -546,14 +631,15 @@ const ConsultationPatient = () => {
                   </label>
                   <select
                     value={accouchementForm.typeAccouchement}
-                    onChange={(e) => setAccouchementForm({ ...accouchementForm, typeAccouchement: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => updateAccouchementForm('typeAccouchement', e.target.value)}
+                    aria-invalid={!!accouchementErrors.typeAccouchement}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${accouchementErrors.typeAccouchement ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option>Voie basse</option>
                     <option>Césarienne</option>
                     <option>Voie basse assistée</option>
                   </select>
+                  {accouchementErrors.typeAccouchement && <p className="mt-1 text-xs text-red-500">{accouchementErrors.typeAccouchement}</p>}
                 </div>
 
                 <div>
@@ -567,7 +653,7 @@ const ConsultationPatient = () => {
                         name="sexe"
                         value="Garçon"
                         checked={accouchementForm.sexeBebe === 'Garçon'}
-                        onChange={(e) => setAccouchementForm({ ...accouchementForm, sexeBebe: e.target.value })}
+                        onChange={(e) => updateAccouchementForm('sexeBebe', e.target.value)}
                         className="w-4 h-4 cursor-pointer"
                         style={{ accentColor: 'var(--primary-orange)' }}
                       />
@@ -579,7 +665,7 @@ const ConsultationPatient = () => {
                         name="sexe"
                         value="Fille"
                         checked={accouchementForm.sexeBebe === 'Fille'}
-                        onChange={(e) => setAccouchementForm({ ...accouchementForm, sexeBebe: e.target.value })}
+                        onChange={(e) => updateAccouchementForm('sexeBebe', e.target.value)}
                         className="w-4 h-4 cursor-pointer"
                         style={{ accentColor: 'var(--primary-orange)' }}
                       />
@@ -598,10 +684,11 @@ const ConsultationPatient = () => {
                       step="0.01"
                       placeholder="3.5"
                       value={accouchementForm.poidsBebe}
-                      onChange={(e) => setAccouchementForm({ ...accouchementForm, poidsBebe: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => updateAccouchementForm('poidsBebe', e.target.value)}
+                      aria-invalid={!!accouchementErrors.poidsBebe}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.poidsBebe ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {accouchementErrors.poidsBebe && <p className="mt-1 text-xs text-red-500">{accouchementErrors.poidsBebe}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--dark-brown)' }}>
@@ -612,10 +699,11 @@ const ConsultationPatient = () => {
                       step="0.1"
                       placeholder="50"
                       value={accouchementForm.tailleBebe}
-                      onChange={(e) => setAccouchementForm({ ...accouchementForm, tailleBebe: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      onChange={(e) => updateAccouchementForm('tailleBebe', e.target.value)}
+                      aria-invalid={!!accouchementErrors.tailleBebe}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${accouchementErrors.tailleBebe ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {accouchementErrors.tailleBebe && <p className="mt-1 text-xs text-red-500">{accouchementErrors.tailleBebe}</p>}
                   </div>
                 </div>
 
@@ -625,12 +713,13 @@ const ConsultationPatient = () => {
                   </label>
                   <textarea
                     value={accouchementForm.notes}
-                    onChange={(e) => setAccouchementForm({ ...accouchementForm, notes: e.target.value })}
+                    onChange={(e) => updateAccouchementForm('notes', e.target.value)}
                     rows={4}
                     placeholder="Observations médicales, complications éventuelles..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
                     maxLength={500}
                   />
+                  {accouchementErrors.notes && <p className="mt-1 text-xs text-red-500">{accouchementErrors.notes}</p>}
                   <div className="text-xs text-gray-500 mt-1">Maximum 500 caractères</div>
                 </div>
               </div>
@@ -686,9 +775,9 @@ const ConsultationPatient = () => {
                   </label>
                   <select
                     value={vaccinForm.nomVaccin}
-                    onChange={(e) => setVaccinForm({ ...vaccinForm, nomVaccin: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-                    required
+                    onChange={(e) => updateVaccinForm('nomVaccin', e.target.value)}
+                    aria-invalid={!!vaccinErrors.nomVaccin}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer ${vaccinErrors.nomVaccin ? 'border-red-400' : 'border-gray-300'}`}
                   >
                     <option>BCG</option>
                     <option>Hépatite B</option>
@@ -699,6 +788,7 @@ const ConsultationPatient = () => {
                     <option>ROR (Rougeole, Oreillons, Rubéole)</option>
                     <option>Méningocoque</option>
                   </select>
+                  {vaccinErrors.nomVaccin && <p className="mt-1 text-xs text-red-500">{vaccinErrors.nomVaccin}</p>}
                 </div>
 
                 <div>
@@ -708,10 +798,11 @@ const ConsultationPatient = () => {
                   <input
                     type="date"
                     value={vaccinForm.dateAdministration}
-                    onChange={(e) => setVaccinForm({ ...vaccinForm, dateAdministration: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
+                    onChange={(e) => updateVaccinForm('dateAdministration', e.target.value)}
+                    aria-invalid={!!vaccinErrors.dateAdministration}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${vaccinErrors.dateAdministration ? 'border-red-400' : 'border-gray-300'}`}
                   />
+                  {vaccinErrors.dateAdministration && <p className="mt-1 text-xs text-red-500">{vaccinErrors.dateAdministration}</p>}
                 </div>
 
                 <div>
@@ -721,7 +812,7 @@ const ConsultationPatient = () => {
                   <input
                     type="date"
                     value={vaccinForm.prochainRappel}
-                    onChange={(e) => setVaccinForm({ ...vaccinForm, prochainRappel: e.target.value })}
+                    onChange={(e) => updateVaccinForm('prochainRappel', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
@@ -732,12 +823,13 @@ const ConsultationPatient = () => {
                   </label>
                   <textarea
                     value={vaccinForm.notes}
-                    onChange={(e) => setVaccinForm({ ...vaccinForm, notes: e.target.value })}
+                    onChange={(e) => updateVaccinForm('notes', e.target.value)}
                     rows={3}
                     placeholder="Observations, réactions éventuelles..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
                     maxLength={500}
                   />
+                  {vaccinErrors.notes && <p className="mt-1 text-xs text-red-500">{vaccinErrors.notes}</p>}
                   <div className="text-xs text-gray-500 mt-1">Maximum 500 caractères</div>
                 </div>
               </div>

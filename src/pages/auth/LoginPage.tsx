@@ -1,29 +1,52 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { login as loginService } from '../../features/auth/services/authService';
+import { loginUser } from '../../application/auth';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<{ loginId?: string; password?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    const nextErrors: { loginId?: string; password?: string; general?: string } = {};
+
+    if (!loginId.trim()) {
+      nextErrors.loginId = 'Votre numéro de téléphone ou email est requis';
+    }
+
+    if (!password.trim()) {
+      nextErrors.password = 'Votre mot de passe est requis';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
     setLoading(true);
 
     try {
-      const result = await loginService(loginId, password);
+      const result = await loginUser(loginId, password);
       login(result.user, result.token);
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
         'Numéro de téléphone / email ou mot de passe incorrect.';
-      setError(message);
+
+      if (message.includes('validation')) {
+        setErrors({ general: message });
+      } else {
+        setErrors({
+          loginId: message,
+          password: message,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -92,14 +115,14 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
+            {errors.general && (
               <div className="flex items-center gap-3 p-3 rounded-lg border bg-red-50 border-red-200">
                 <i className="ri-error-warning-line text-red-500 flex-shrink-0"></i>
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700">{errors.general}</p>
               </div>
             )}
 
-            {/* Email */}
+            {/* Identifiant */}
             <div>
               <label htmlFor="loginId" className="block text-sm font-medium mb-2" style={{ color: 'var(--dark-brown)' }}>
                 Numéro de téléphone ou email
@@ -111,14 +134,18 @@ export default function LoginPage() {
                   id="loginId"
                   name="loginId"
                   value={loginId}
-                  onChange={(e) => setLoginId(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setLoginId(e.target.value);
+                    setErrors((prev) => ({ ...prev, loginId: undefined, general: undefined }));
+                  }}
+                  aria-invalid={!!errors.loginId}
                   autoComplete="username"
-                  className="w-full pl-10 pr-4 h-11 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] transition-all bg-white"
-                  style={{ borderColor: '#DDD0C8' }}
+                  className={`w-full pl-10 pr-4 h-11 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] transition-all bg-white ${errors.loginId ? 'border-red-400' : ''}`}
+                  style={{ borderColor: errors.loginId ? undefined : '#DDD0C8' }}
                   placeholder="+221771234567 ou admin@demo.com"
                 />
               </div>
+              {errors.loginId && <p className="text-xs text-red-500 mt-1">{errors.loginId}</p>}
             </div>
 
             {/* Mot de passe */}
@@ -138,11 +165,14 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrors((prev) => ({ ...prev, password: undefined, general: undefined }));
+                  }}
+                  aria-invalid={!!errors.password}
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-11 h-11 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] transition-all bg-white"
-                  style={{ borderColor: '#DDD0C8' }}
+                  className={`w-full pl-10 pr-11 h-11 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-teal)] transition-all bg-white ${errors.password ? 'border-red-400' : ''}`}
+                  style={{ borderColor: errors.password ? undefined : '#DDD0C8' }}
                   placeholder="••••••••"
                 />
                 <button
@@ -151,8 +181,9 @@ export default function LoginPage() {
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                 >
                   <i className={`${showPassword ? 'ri-eye-off-line' : 'ri-eye-line'} text-base`}></i>
-                </button>
+                  </button>
               </div>
+              {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
             </div>
 
             {/* Bouton connexion */}

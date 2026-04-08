@@ -4,7 +4,7 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, Filler,
 } from 'chart.js';
-import { getBebe, getCroissanceBebe, getVaccins } from '../../features/maman/services/mamanService';
+import { getBebe, getCroissanceBebe, getVaccins } from '../../application/maman';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
