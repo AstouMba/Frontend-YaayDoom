@@ -35,6 +35,19 @@ const normalizeSenegalPhone = (value: string | undefined | null) => {
   return digits;
 };
 
+const buildLoginPayload = (loginId: string, password: string) => {
+  const trimmedLoginId = String(loginId || '').trim();
+  const normalizedPhone = normalizeSenegalPhone(trimmedLoginId);
+
+  return {
+    loginId: trimmedLoginId,
+    identifier: trimmedLoginId,
+    email: trimmedLoginId.includes('@') ? trimmedLoginId.toLowerCase() : trimmedLoginId,
+    phone: normalizedPhone || trimmedLoginId,
+    password,
+  };
+};
+
 const normalizeUser = (user: Record<string, any>): AuthUser => ({
   id: String(user.id),
   name: user.name || user.nom || '',
@@ -82,7 +95,8 @@ const buildRegisterPayload = (input: RegisterUserInput) => {
 export const localAuthRepository: AuthRepository = {
   async login(loginId, password): Promise<AuthSession> {
     try {
-      const { data } = await api.post('/auth/login', { loginId, password });
+      const payload = buildLoginPayload(loginId, password);
+      const { data } = await api.post('/auth/login', payload);
       const normalizedUser = normalizeUser(data.user || data.data?.user || data.data || {});
       const token =
         data.token ||
