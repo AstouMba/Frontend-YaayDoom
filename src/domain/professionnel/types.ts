@@ -12,6 +12,28 @@ export interface Patient {
   telephone: string;
 }
 
+export interface FamilyMember {
+  id: string;
+  type: 'maman' | 'bebe';
+  nom: string;
+  lien?: string;
+  age?: number | string;
+  estActif?: boolean;
+  raw?: Record<string, any>;
+}
+
+export interface FamilyDossier {
+  id: string;
+  maman?: Record<string, any> | null;
+  bebes: Record<string, any>[];
+  grossesses: Record<string, any>[];
+  consultations: Record<string, any>[];
+  vaccinations: Record<string, any>[];
+  membres?: FamilyMember[];
+  estGemellaire?: boolean;
+  raw?: Record<string, any>;
+}
+
 export interface GrossesseProfessionnelle {
   id: string;
   rawId?: string;
@@ -59,12 +81,18 @@ export interface Vaccination {
 
 export interface PatientScanResult extends Patient {
   grossesse?: GrossesseProfessionnelle;
+  familleId?: string;
+  familleUuid?: string;
+  famille?: FamilyDossier;
 }
 
 export interface ProfessionnelRepository {
   getPatients(): Promise<Patient[]>;
   getPatientById(id: string): Promise<Patient | null>;
   getPatientByQRCode(code: string): Promise<PatientScanResult>;
+  getFamille(uuid: string): Promise<FamilyDossier>;
+  getFamilleMaman(uuid: string): Promise<Record<string, any>>;
+  getFamilleBebe(uuid: string, bebeUuid: string): Promise<Record<string, any>>;
   getGrossesses(): Promise<GrossesseProfessionnelle[]>;
   getGrossesseById(id: string): Promise<any>;
   validateGrossesse(id: string): Promise<any>;

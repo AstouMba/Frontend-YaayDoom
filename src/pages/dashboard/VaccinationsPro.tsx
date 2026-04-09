@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { administrerVaccin, getVaccinations } from '../../application/professionnel';
+import { getVaccinations } from '../../application/professionnel';
 import Pagination from '../../components/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 
@@ -29,7 +29,6 @@ const VaccinationsPro = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState<'TOUS' | VaccinationStatus>('TOUS');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
   const [vaccinations, setVaccinations] = useState<VaccinationRecord[]>([]);
 
   const calendrierVaccinal: Vaccin[] = [
@@ -51,16 +50,6 @@ const VaccinationsPro = () => {
   useEffect(() => {
     loadVaccinations().catch(() => setVaccinations([]));
   }, []);
-
-  const markAsDone = async (id: string) => {
-    setLoadingId(id);
-    try {
-      await administrerVaccin(id);
-      await loadVaccinations();
-    } finally {
-      setLoadingId(null);
-    }
-  };
 
   const filteredVaccinations = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -316,15 +305,9 @@ const VaccinationsPro = () => {
                   <div className="text-xs text-gray-600 mb-1 font-medium">Notes</div>
                   <p className="text-sm text-gray-700">{vaccination.notes || 'Aucune note'}</p>
                 </div>
-                {vaccination.statut !== 'ADMINISTRE' && (
-                  <button
-                    onClick={() => markAsDone(vaccination.id)}
-                    disabled={loadingId === vaccination.id}
-                    className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-60"
-                  >
-                    {loadingId === vaccination.id ? 'Mise a jour...' : 'Marquer comme administre'}
-                  </button>
-                )}
+                <div className="text-xs text-gray-500 italic">
+                  La mise à jour directe des vaccinations a été retirée du backend.
+                </div>
               </div>
             </div>
           </div>

@@ -1,4 +1,7 @@
 export { getPatients } from './getPatients';
+export { getFamille } from './getFamille';
+export { getFamilleMaman } from './getFamilleMaman';
+export { getFamilleBebe } from './getFamilleBebe';
 export { getGrossesses } from './getGrossesses';
 export { validateGrossesse } from './validateGrossesse';
 export { rejectGrossesse } from './rejectGrossesse';

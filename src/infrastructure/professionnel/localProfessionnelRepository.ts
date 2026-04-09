@@ -2,6 +2,7 @@ import { api } from '../../core/api/api';
 import { weekFromDate } from '../../core/date';
 import { getStoredSessionUser } from '../../core/session';
 import type {
+  FamilyDossier,
   Consultation,
   GrossesseProfessionnelle,
   Patient,
@@ -80,6 +81,46 @@ const mapVaccination = (vaccination: Record<string, any>, bebe?: Record<string, 
 });
 
 const resolvePatientId = (patientId: string) => String(patientId).replace('p-', '').replace('m-', '');
+const resolveFamilyId = (value: unknown) => String(value || '').replace(/^famille-/, '').trim();
+
+const makeUnsupportedError = (message: string) => {
+  const error = new Error(message) as Error & { response?: { data?: { message: string } } };
+  error.response = { data: { message } };
+  return error;
+};
+
+const normalizeFamily = (data: Record<string, any>, fallbackId: string): FamilyDossier => {
+  const raw = data?.data || data?.family || data;
+  const familyId = resolveFamilyId(raw?.uuid || raw?.family_uuid || raw?.id || fallbackId);
+  const bebes = Array.isArray(raw?.bebes)
+    ? raw.bebes
+    : Array.isArray(raw?.enfants)
+      ? raw.enfants
+      : Array.isArray(raw?.children)
+        ? raw.children
+        : [];
+
+  const grossesses = Array.isArray(raw?.grossesses)
+    ? raw.grossesses
+    : raw?.grossesse
+      ? [raw.grossesse]
+      : [];
+
+  const consultations = Array.isArray(raw?.consultations) ? raw.consultations : [];
+  const vaccinations = Array.isArray(raw?.vaccinations) ? raw.vaccinations : [];
+
+  return {
+    id: familyId,
+    maman: raw?.maman || raw?.mere || raw?.mother || null,
+    bebes,
+    grossesses,
+    consultations,
+    vaccinations,
+    membres: Array.isArray(raw?.membres) ? raw.membres : undefined,
+    estGemellaire: Boolean(raw?.estGemellaire ?? raw?.est_gemellaire ?? bebes.length > 1),
+    raw,
+  };
+};
 
 export const localProfessionnelRepository: ProfessionnelRepository = {
   async getPatients() {
@@ -101,6 +142,25 @@ export const localProfessionnelRepository: ProfessionnelRepository = {
     return data;
   },
 
+  async getFamille(uuid: string) {
+    const familyId = resolveFamilyId(uuid);
+    const { data } = await api.get(`/familles/${familyId}`);
+    return normalizeFamily(data, familyId);
+  },
+
+  async getFamilleMaman(uuid: string) {
+    const familyId = resolveFamilyId(uuid);
+    const { data } = await api.get(`/familles/${familyId}/maman`);
+    return data;
+  },
+
+  async getFamilleBebe(uuid: string, bebeUuid: string) {
+    const familyId = resolveFamilyId(uuid);
+    const bebeId = resolveFamilyId(bebeUuid);
+    const { data } = await api.get(`/familles/${familyId}/bebes/${bebeId}`);
+    return data;
+  },
+
   async getGrossesses() {
     const { data } = await api.get('/grossesses');
     const grossesses = Array.isArray(data) ? data : [];
@@ -114,15 +174,11 @@ export const localProfessionnelRepository: ProfessionnelRepository = {
   },
 
   async validateGrossesse(id: string) {
-    const rawId = String(id).replace('g-', '');
-    const { data } = await api.patch(`/grossesses/${rawId}`, { statut: 'en_cours' });
-    return data;
+    throw makeUnsupportedError('La validation directe des grossesses a été retirée côté backend.');
   },
 
   async rejectGrossesse(id: string) {
-    const rawId = String(id).replace('g-', '');
-    const { data } = await api.patch(`/grossesses/${rawId}`, { statut: 'annulee' });
-    return data;
+    throw makeUnsupportedError('Le rejet direct des grossesses a été retiré côté backend.');
   },
 
   async getGrossessesEnAttente() {
@@ -198,11 +254,7 @@ export const localProfessionnelRepository: ProfessionnelRepository = {
   },
 
   async administrerVaccin(id: string) {
-    const rawId = String(id).replace('v-', '');
-    const response = await api.patch(`/vaccinations/${rawId}`, {
-      date_vaccination: new Date().toISOString().slice(0, 10),
-    });
-    return response.data;
+    throw makeUnsupportedError('La mise à jour directe des vaccinations a été retirée côté backend.');
   },
 
   async registerAccouchement(mamanId: string, payload: Record<string, any>) {

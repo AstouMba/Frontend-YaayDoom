@@ -41,6 +41,18 @@ const ScanPatient = () => {
   const scanLoopRef = useRef<ReturnType<typeof globalThis.setInterval> | null>(null);
   const scanLockRef = useRef(false);
 
+  const extractFamilyId = (result: any) =>
+    String(
+      result?.familleId ||
+        result?.famille_uuid ||
+        result?.familleUuid ||
+        result?.familyId ||
+        result?.family_uuid ||
+        result?.uuid ||
+        result?.id ||
+        ''
+    ).trim();
+
   const stopCamera = () => {
     if (scanLoopRef.current !== null) {
       globalThis.clearInterval(scanLoopRef.current);
@@ -203,6 +215,13 @@ const ScanPatient = () => {
     try {
       const result = await scanPatient(value);
       const patientData = normalizePatient(result);
+      const familyId = extractFamilyId(result);
+
+      if (familyId) {
+        navigate(`/famille/${familyId}`, { state: { scan: result, patient: patientData } });
+        return;
+      }
+
       navigate('/dashboard-pro/consultation-patient', { state: { patient: patientData } });
     } catch {
       setError('Patient non trouve. Verifiez le code QR.');

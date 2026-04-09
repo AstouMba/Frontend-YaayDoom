@@ -61,7 +61,7 @@ docker compose -f docker-compose.dev.yml up -d --build
 
 Adresse par défaut:
 
-- `http://localhost:3001`
+- `http://localhost:3000`
 
 Ce mode utilise:
 
@@ -115,5 +115,5 @@ cd Backend-Yaaydoom && docker compose down
 
 - Front production: `3000`
 - Backend production: `8000`
-- Front développement: `3001`
+- Front développement: `3000`
 - Backend développement: `8010`

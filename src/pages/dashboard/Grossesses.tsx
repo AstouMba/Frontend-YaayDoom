@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   getGrossesses,
-  rejectGrossesse,
-  validateGrossesse,
 } from '../../application/professionnel';
 import Pagination from '../../components/Pagination';
 import { usePagination } from '../../hooks/usePagination';
@@ -24,7 +22,6 @@ interface Grossesse {
 const Grossesses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState<FilterStatut>('TOUS');
-  const [loadingId, setLoadingId] = useState<string | null>(null);
   const [grossesses, setGrossesses] = useState<Grossesse[]>([]);
 
   const loadGrossesses = async () => {
@@ -35,28 +32,6 @@ const Grossesses = () => {
   useEffect(() => {
     loadGrossesses().catch(() => setGrossesses([]));
   }, []);
-
-  const handleValider = async (id: string) => {
-    setLoadingId(id);
-    try {
-      await validateGrossesse(id);
-      await loadGrossesses();
-    } finally {
-      setLoadingId(null);
-    }
-  };
-
-  const handleRejeter = async (id: string) => {
-    if (!confirm('Voulez-vous rejeter cette grossesse ?')) return;
-
-    setLoadingId(id);
-    try {
-      await rejectGrossesse(id);
-      await loadGrossesses();
-    } finally {
-      setLoadingId(null);
-    }
-  };
 
   const filteredGrossesses = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -256,28 +231,9 @@ const Grossesses = () => {
                   <div className="text-xs text-gray-600 mb-1 font-medium">Notes</div>
                   <p className="text-sm text-gray-700">{grossesse.notes || 'Aucune note'}</p>
                 </div>
-
-                {grossesse.statut === 'EN_ATTENTE' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleValider(grossesse.id)}
-                      disabled={loadingId === grossesse.id}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                      style={{ backgroundColor: 'var(--primary-teal)' }}
-                    >
-                      <i className="ri-checkbox-circle-line"></i>
-                      Valider
-                    </button>
-                    <button
-                      onClick={() => handleRejeter(grossesse.id)}
-                      disabled={loadingId === grossesse.id}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 bg-red-500"
-                    >
-                      <i className="ri-close-circle-line"></i>
-                      Rejeter
-                    </button>
-                  </div>
-                )}
+                <div className="text-xs text-gray-500 italic">
+                  Les validations directes ont été retirées du périmètre backend.
+                </div>
               </div>
             </div>
           </div>

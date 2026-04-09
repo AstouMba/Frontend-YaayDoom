@@ -76,6 +76,12 @@ const mapRendezVous = (rdv: Record<string, any>): RendezVous => ({
   notes: rdv.notes || '',
 });
 
+const makeUnsupportedError = (message: string) => {
+  const error = new Error(message) as Error & { response?: { data?: { message: string } } };
+  error.response = { data: { message } };
+  return error;
+};
+
 export const localMamanRepository: MamanRepository = {
   async getGrossesse() {
     const userId = getCurrentUserId();
@@ -101,8 +107,7 @@ export const localMamanRepository: MamanRepository = {
   },
 
   async updateGrossesse(id: string, data: Record<string, any>) {
-    const { data: updated } = await api.put(`/grossesses/${id}`, data);
-    return updated;
+    throw makeUnsupportedError('La mise à jour directe des grossesses a été retirée côté backend.');
   },
 
   async getBebe() {

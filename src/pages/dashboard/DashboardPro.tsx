@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   getAllConsultations,
   getGrossesses,
-  rejectGrossesse,
-  validateGrossesse,
 } from '../../application/professionnel';
 import Pagination from '../../components/Pagination';
 import { usePagination } from '../../hooks/usePagination';
@@ -25,7 +23,6 @@ const DashboardPro = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'attente' | 'suivies'>('attente');
-  const [loadingId, setLoadingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [grossesses, setGrossesses] = useState<GrossesseItem[]>([]);
   const [consultationsCount, setConsultationsCount] = useState(0);
@@ -93,28 +90,6 @@ const DashboardPro = () => {
     setPageAttente(1);
     setPageSuivies(1);
   }, [searchTerm, setPageAttente, setPageSuivies]);
-
-  const handleValider = async (id: string) => {
-    setLoadingId(id);
-    try {
-      await validateGrossesse(id);
-      await loadData();
-    } finally {
-      setLoadingId(null);
-    }
-  };
-
-  const handleRejeter = async (id: string) => {
-    if (!confirm('Voulez-vous rejeter cette grossesse ?')) return;
-
-    setLoadingId(id);
-    try {
-      await rejectGrossesse(id);
-      await loadData();
-    } finally {
-      setLoadingId(null);
-    }
-  };
 
   return (
     <div className="p-6 max-w-full">
@@ -230,22 +205,9 @@ const DashboardPro = () => {
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">EN_ATTENTE</span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleValider(g.id)}
-                          disabled={loadingId === g.id}
-                          className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 disabled:opacity-50"
-                        >
-                          {loadingId === g.id ? <i className="ri-loader-2-line animate-spin"></i> : <><i className="ri-check-line mr-1"></i>Valider</>}
-                        </button>
-                        <button
-                          onClick={() => handleRejeter(g.id)}
-                          disabled={loadingId === g.id}
-                          className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 disabled:opacity-50"
-                        >
-                          <i className="ri-close-line mr-1"></i>Rejeter
-                        </button>
-                      </div>
+                      <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
+                        Lecture seule
+                      </span>
                     </td>
                   </tr>
                 ))}
