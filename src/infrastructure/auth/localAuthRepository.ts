@@ -69,10 +69,17 @@ const normalizeUser = (user: Record<string, any>): AuthUser => ({
 });
 
 const buildRegisterPayload = (input: RegisterUserInput) => {
+  const fullName = String(input.fullName || '').trim();
+  const phone = String(input.phone || '').trim();
+  const email = String(input.email || '').trim().toLowerCase();
+  const specialty = String(input.specialty || '').trim();
+  const matricule = String(input.matricule || '').trim();
+  const healthCenter = String(input.healthCenter || '').trim();
+
   const payload: Record<string, any> = {
     role: input.role,
-    fullName: input.fullName,
-    phone: input.phone,
+    fullName,
+    phone,
     password: input.password,
     password_confirmation: input.passwordConfirmation || input.password,
   };
@@ -84,10 +91,10 @@ const buildRegisterPayload = (input: RegisterUserInput) => {
     return payload;
   }
 
-  payload.email = input.email || '';
-  payload.specialite = input.specialty || '';
-  payload.matricule = input.matricule || '';
-  payload.centre_de_sante = input.healthCenter || '';
+  payload.email = email;
+  payload.specialite = specialty;
+  payload.matricule = matricule;
+  payload.centre_de_sante = healthCenter;
 
   return payload;
 };
