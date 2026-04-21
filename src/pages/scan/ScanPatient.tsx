@@ -25,6 +25,54 @@ interface PatientData {
   };
 }
 
+const pickFirstValue = (...values: Array<unknown>) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return '';
+};
+
+const toValidDateOrEmpty = (value: unknown) => {
+  const text = pickFirstValue(value);
+  if (!text) return '';
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? text : parsed.toISOString();
+};
+
+const pickGrossesseWeek = (grossesse: Record<string, any>) => {
+  const rawWeek = pickFirstValue(
+    grossesse?.semaineGrossesse,
+    grossesse?.semaine_grossesse,
+    grossesse?.week,
+    grossesse?.weeks,
+    grossesse?.age_gestationnel,
+    grossesse?.ageGestationnel
+  );
+
+  const parsed = Number(rawWeek);
+  if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+
+  const fromDate = pickFirstValue(
+    grossesse?.dateDernieresRegles,
+    grossesse?.date_debut,
+    grossesse?.date_derniere_regle,
+    grossesse?.dateDerniereRegle,
+    grossesse?.last_menstrual_period,
+    grossesse?.lmp
+  );
+
+  if (!fromDate) return 0;
+
+  const parsedDate = new Date(fromDate);
+  if (Number.isNaN(parsedDate.getTime())) return 0;
+
+  const now = new Date();
+  const diffDays = Math.max(0, Math.floor((now.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24)));
+  return Math.floor(diffDays / 7);
+};
+
 const ScanPatient = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -174,28 +222,62 @@ const ScanPatient = () => {
   };
 
   const normalizePatient = (result: any): PatientData => {
-    const grossesse = result?.grossesse || result;
+    const famille = result?.famille || result?.family || result?.data || {};
+    const maman = result?.maman || result?.mother || famille?.maman || famille?.mother || {};
+    const grossesse = result?.grossesse || famille?.grossesse || famille?.grossesses?.[0] || result;
+    const bebe = result?.bebe || famille?.bebes?.[0] || famille?.enfants?.[0] || {};
+    const name = pickFirstValue(
+      result?.nomMaman,
+      result?.nom,
+      maman?.nom,
+      maman?.name,
+      grossesse?.mamanNom,
+      grossesse?.maman_nom,
+      famille?.maman?.nom,
+      famille?.maman?.name
+    );
+    const email = pickFirstValue(result?.email, maman?.email, grossesse?.email, famille?.maman?.email) || '-';
+    const phone = pickFirstValue(result?.telephone, result?.phone, maman?.telephone, maman?.phone, grossesse?.numeroTelephone) || '-';
+    const dateAccouchement = toValidDateOrEmpty(
+      pickFirstValue(
+        grossesse?.datePresumeAccouchement,
+        grossesse?.date_presume_accouchement,
+        grossesse?.date_accouchement_prevue,
+        grossesse?.date_accouchement,
+        grossesse?.due_date
+      )
+    );
+    const dernieresRegles = toValidDateOrEmpty(
+      pickFirstValue(
+        grossesse?.dateDernieresRegles,
+        grossesse?.date_debut,
+        grossesse?.date_derniere_regle,
+        grossesse?.dateDerniereRegle,
+        grossesse?.last_menstrual_period,
+        grossesse?.lmp
+      )
+    );
 
     return {
-      id: String(result?.id || `m-${grossesse?.mamanId || ''}`),
-      name: result?.nomMaman || result?.nom || grossesse?.mamanNom || 'Patiente',
-      email: result?.email || '-',
-      phone: result?.telephone || '-',
+      id: String(result?.id || maman?.id || grossesse?.mamanId || grossesse?.maman_id || `m-${grossesse?.mamanNom || ''}`),
+      name: name || 'Patiente',
+      email,
+      phone,
       grossesse: {
-        semaineActuelle: Number(grossesse?.semaineGrossesse || 0),
-        dateAccouchementPrevue: grossesse?.datePresumeAccouchement || '',
-        dateDernieresRegles: grossesse?.dateDernieresRegles || '',
-        statut: grossesse?.statut === 'EN_ATTENTE' ? 'EN_ATTENTE' : 'VALIDEE',
+        semaineActuelle: pickGrossesseWeek(grossesse),
+        dateAccouchementPrevue: dateAccouchement,
+        dateDernieresRegles: dernieresRegles,
+        statut: grossesse?.statut === 'EN_ATTENTE' || grossesse?.statut === 'en_attente' ? 'EN_ATTENTE' : 'VALIDEE',
       },
       bebe:
-        result?.bebeId || result?.dateDenaissance
+        result?.bebeId || result?.dateDenaissance || bebe?.id
           ? {
-              id: String(result?.bebeId || ''),
-              nom: result?.nom || result?.bebeNom || 'Bebe',
-              dateNaissance: result?.dateDenaissance || '',
-              poids: '-',
-              taille: '-',
-              sexe: result?.sexe || '-',
+              id: String(result?.bebeId || bebe?.id || ''),
+              nom: pickFirstValue(result?.bebeNom, bebe?.nom, bebe?.name, result?.nom) || 'Bebe',
+              dateNaissance: pickFirstValue(result?.dateDenaissance, bebe?.date_naissance, bebe?.dateNaissance),
+              poids: pickFirstValue(result?.poids, bebe?.poids, bebe?.weight) || '-',
+              taille: pickFirstValue(result?.taille, bebe?.taille, bebe?.height) || '-',
+              sexe: pickFirstValue(result?.sexe, bebe?.sexe) || '-',
             }
           : undefined,
     };

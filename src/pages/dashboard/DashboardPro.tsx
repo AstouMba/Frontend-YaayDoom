@@ -205,9 +205,12 @@ const DashboardPro = () => {
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">EN_ATTENTE</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
-                        Lecture seule
-                      </span>
+                      <button
+                        onClick={() => navigate('/dashboard-pro/grossesses')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-50 text-teal-700 hover:bg-teal-100"
+                      >
+                        Ouvrir la validation
+                      </button>
                     </td>
                   </tr>
                 ))}

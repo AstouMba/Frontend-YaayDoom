@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../application/auth';
 
 interface User {
   id: string;
@@ -50,6 +51,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => safeParseUser(storage?.getItem(USER_KEY) ?? null));
   const [token, setToken] = useState<string | null>(() => storage?.getItem(TOKEN_KEY) ?? null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshUser = async () => {
+      if (!token) return;
+
+      try {
+        const currentUser = await getCurrentUser();
+        if (cancelled || !currentUser) return;
+
+        setUser(currentUser);
+        storage?.setItem(USER_KEY, JSON.stringify(currentUser));
+      } catch {
+        // On garde la session locale si le backend ne répond pas.
+      }
+    };
+
+    refreshUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const login = (userData: User, accessToken: string) => {
     setUser(userData);

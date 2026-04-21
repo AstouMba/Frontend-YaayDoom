@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useAuth } from '../../context/AuthContext';
 import { getBebe, getVaccins } from '../../application/maman';
 
 export default function Carte() {
+  const { user } = useAuth();
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const [bebe, setBebe] = useState<any>(null);
   const [vaccinsCount, setVaccinsCount] = useState(0);
@@ -20,27 +22,19 @@ export default function Carte() {
       });
   }, []);
 
-  const currentUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('yaydoom_user') || 'null');
-    } catch {
-      return null;
-    }
-  }, []);
-
   const carteData = useMemo(() => {
     const rawDate = bebe?.dateNaissance || '';
     const formattedDate = rawDate
       ? new Date(rawDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
       : '-';
 
-    const numeroCarnet = currentUser?.id
-      ? `YD-${String(currentUser.id).replace(/-/g, '').slice(0, 8).toUpperCase()}`
+    const numeroCarnet = user?.id
+      ? `YD-${String(user.id).replace(/-/g, '').slice(0, 8).toUpperCase()}`
       : 'YD-000000';
-    const qrCodeData = currentUser?.id || `${numeroCarnet}-${(bebe?.nom || 'BEBE').toUpperCase()}`;
+    const qrCodeData = user?.id || `${numeroCarnet}-${(bebe?.nom || 'BEBE').toUpperCase()}`;
 
     return {
-      nomMaman: currentUser?.name || 'Maman',
+      nomMaman: user?.name || 'Maman',
       nomBebe: bebe?.nom || 'Bebe',
       dateNaissance: formattedDate,
       sexe: bebe?.sexe || '-',
@@ -51,7 +45,7 @@ export default function Carte() {
       dateCreation: new Date().toLocaleDateString('fr-FR'),
       lieuCreation: 'Dakar',
     };
-  }, [bebe, currentUser]);
+  }, [bebe, user]);
 
   const handleDownloadPDF = () => {
     alert('Téléchargement du PDF en cours...');

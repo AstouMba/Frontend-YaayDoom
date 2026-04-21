@@ -17,7 +17,7 @@ const BottomNav = () => {
   if (user?.role !== 'maman') return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-40">
+    <nav className="fixed bottom-0 leftBienvenue-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-40">
       <div className="flex justify-around py-2">
         {mamanLinks.map((link) => (
           <Link

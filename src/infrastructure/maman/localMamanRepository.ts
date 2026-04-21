@@ -14,26 +14,43 @@ import type {
 const getCurrentUserId = () => getStoredSessionUser()?.id ? String(getStoredSessionUser()?.id) : null;
 const getCurrentUserName = () => getStoredSessionUser()?.name || 'Patiente';
 
+const normalizeGrossesseId = (value: unknown) => String(value || '').trim();
+
+const extractMamanId = (grossesse: Record<string, any>) =>
+  normalizeGrossesseId(
+    grossesse.maman_id ||
+      grossesse.mamanId ||
+      grossesse.patient_id ||
+      grossesse.patientId ||
+      grossesse.user_id ||
+      grossesse.userId ||
+      grossesse.mere_id ||
+      grossesse.mother_id ||
+      ''
+  );
+
 const grossesseStatusToUi = (status: string): Grossesse['statut'] => {
-  if (status === 'VALIDEE' || status === 'en_cours') return 'VALIDEE';
-  if (status === 'TERMINEE' || status === 'terminee') return 'TERMINEE';
-  if (status === 'ANNULEE' || status === 'annulee') return 'ANNULEE';
+  const normalized = String(status || '').trim().toLowerCase();
+
+  if (['validée', 'validee', 'valided', 'validated', 'en_cours', 'en cours'].includes(normalized)) return 'VALIDEE';
+  if (['terminée', 'terminee', 'terminated'].includes(normalized)) return 'TERMINEE';
+  if (['annulée', 'annulee', 'canceled', 'cancelled'].includes(normalized)) return 'ANNULEE';
   return 'EN_ATTENTE';
 };
 
 const mapGrossesse = (current: Record<string, any>): Grossesse => ({
   id: String(current.id),
-  mamanId: String(current.maman_id),
+  mamanId: extractMamanId(current),
   mamanNom: getCurrentUserName(),
-  dateDernieresRegles: current.date_debut,
-  dateAccouchePrevue: current.date_fin_prevue || null,
-  semaineGrossesse: weekFromDate(current.date_debut),
+  dateDernieresRegles: current.date_debut || current.dateDernieresRegles || current.date_derniere_regle || '',
+  dateAccouchePrevue: current.date_fin_prevue || current.dateAccouchePrevue || current.date_accouchement_prevue || null,
+  semaineGrossesse: Number(current.semaineGrossesse || current.semaine_grossesse || weekFromDate(current.date_debut || current.dateDernieresRegles || current.date_derniere_regle)),
   nombreGrossessesPrecedentes: Number(current.nombre_grossesses_precedentes || 0),
-  antecedentsMedicaux: current.notes || '',
-  statut: grossesseStatusToUi(current.statut),
-  professionnelValidateur: current.professionnel_validateur || '-',
-  dateValidation: current.updated_at || null,
-  trimestre: Math.max(1, Math.min(3, Math.ceil(weekFromDate(current.date_debut) / 13) || 1)),
+  antecedentsMedicaux: current.notes || current.antecedentsMedicaux || '',
+  statut: grossesseStatusToUi(current.statut || current.status),
+  professionnelValidateur: current.professionnel_validateur || current.professionnelValidateur || '-',
+  dateValidation: current.updated_at || current.date_validation || current.dateValidation || null,
+  trimestre: Math.max(1, Math.min(3, Math.ceil((Number(current.semaineGrossesse || current.semaine_grossesse || weekFromDate(current.date_debut || current.dateDernieresRegles || current.date_derniere_regle || '')) || 1) / 13) || 1)),
 });
 
 const mapBebe = (bebe: Record<string, any>): Bebe => ({
@@ -89,7 +106,10 @@ export const localMamanRepository: MamanRepository = {
 
     const { data } = await api.get('/grossesses');
     const grossesses = Array.isArray(data) ? data : [];
-    const current = grossesses.find((g) => String(g.maman_id) === String(userId));
+    const current = grossesses.find((g) => {
+      const mamanId = extractMamanId(g);
+      return mamanId === String(userId);
+    });
     return current ? mapGrossesse(current) : null;
   },
 
