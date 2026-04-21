@@ -332,7 +332,7 @@ const ScanPatient = () => {
         return;
       }
 
-      const openStream = async (constraints: MediaStreamConstraints) =>
+      const openStream = async (constraints: Parameters<MediaDevices['getUserMedia']>[0]) =>
         mediaDevices.getUserMedia({
           ...constraints,
           audio: false,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   approveProfessionnel,
   getProfessionnelsEnAttente,
@@ -31,7 +31,7 @@ const Validation = () => {
     end,
   } = usePagination(professionnels, 8);
 
-  const loadProfessionnels = async () => {
+  const loadProfessionnels = useCallback(async () => {
     try {
       const data = await getProfessionnelsEnAttente();
       setProfessionnels(data);
@@ -40,7 +40,7 @@ const Validation = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadProfessionnels();
@@ -61,7 +61,7 @@ const Validation = () => {
       globalThis.window?.removeEventListener('focus', handleFocus);
       globalThis.document?.removeEventListener('visibilitychange', handleFocus);
     };
-  }, []);
+  }, [loadProfessionnels]);
 
   const showNotif = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
