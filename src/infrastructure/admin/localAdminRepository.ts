@@ -89,7 +89,7 @@ export const localAdminRepository: AdminRepository = {
     return users
       .filter(
         (user: Record<string, any>) =>
-          !Boolean(user.isValidated ?? user.is_validated) &&
+          !(user.isValidated ?? user.is_validated) &&
           !user.decisionStatus &&
           !user.decision_status
       )

@@ -212,7 +212,7 @@ const DossierFamilial = () => {
     };
 
     load();
-  }, [id, locationState.family]);
+  }, [id, locationState.family, locationState.scan]);
 
   const selectedMember = useMemo(
     () => family?.membres?.find((member) => member.id === selectedMemberId) || family?.membres?.[0] || null,
