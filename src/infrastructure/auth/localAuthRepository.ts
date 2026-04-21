@@ -35,17 +35,36 @@ const normalizeSenegalPhone = (value: string | undefined | null) => {
   return digits;
 };
 
-const buildLoginPayload = (loginId: string, password: string) => {
+const buildLoginPayloads = (loginId: string, password: string) => {
   const trimmedLoginId = String(loginId || '').trim();
-  const normalizedPhone = normalizeSenegalPhone(trimmedLoginId);
 
-  return {
-    loginId: trimmedLoginId,
-    identifier: trimmedLoginId,
-    email: trimmedLoginId.includes('@') ? trimmedLoginId.toLowerCase() : trimmedLoginId,
-    phone: normalizedPhone || trimmedLoginId,
-    password,
-  };
+  if (trimmedLoginId.includes('@')) {
+    return [
+      {
+        email: trimmedLoginId.toLowerCase(),
+        password,
+      },
+    ];
+  }
+
+  const rawPhone = trimmedLoginId;
+  const compactPhone = trimmedLoginId.replace(/\s+/g, '');
+  const normalizedPhone = normalizeSenegalPhone(compactPhone) || compactPhone;
+
+  return [
+    {
+      phone: rawPhone,
+      password,
+    },
+    {
+      phone: compactPhone,
+      password,
+    },
+    {
+      phone: normalizedPhone,
+      password,
+    },
+  ];
 };
 
 const normalizeUser = (user: Record<string, any>): AuthUser => ({
@@ -102,18 +121,28 @@ const buildRegisterPayload = (input: RegisterUserInput) => {
 export const localAuthRepository: AuthRepository = {
   async login(loginId, password): Promise<AuthSession> {
     try {
-      const payload = buildLoginPayload(loginId, password);
-      const { data } = await api.post('/auth/login', payload);
-      const normalizedUser = normalizeUser(data.user || data.data?.user || data.data || {});
-      const token =
-        data.token ||
-        data.access_token ||
-        (data.token_type && data.access_token ? `${data.token_type} ${data.access_token}`.trim() : undefined);
+      const payloads = buildLoginPayloads(loginId, password);
+      let lastError: any = null;
 
-      return {
-        user: normalizedUser,
-        token: token || '',
-      };
+      for (const payload of payloads) {
+        try {
+          const { data } = await api.post('/auth/login', payload);
+          const normalizedUser = normalizeUser(data.user || data.data?.user || data.data || {});
+          const token =
+            data.token ||
+            data.access_token ||
+            (data.token_type && data.access_token ? `${data.token_type} ${data.access_token}`.trim() : undefined);
+
+          return {
+            user: normalizedUser,
+            token: token || '',
+          };
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError;
     } catch (error) {
       throw makeAuthError(extractErrorMessage(error, 'Numéro de téléphone / email ou mot de passe incorrect.'));
     }
@@ -182,16 +211,17 @@ export const localAuthRepository: AuthRepository = {
 
   async getCurrentUser() {
     try {
-      const storedUser = getStoredSessionUser();
-      if (storedUser) {
-        return normalizeUser(storedUser);
-      }
-
       const { data } = await api.get('/auth/me');
       const payload = data.user || data.data?.user || data.data || data;
-      return payload ? normalizeUser(payload) : null;
+      if (payload) {
+        return normalizeUser(payload);
+      }
+
+      const storedUser = getStoredSessionUser();
+      return storedUser ? normalizeUser(storedUser) : null;
     } catch {
-      return null;
+      const storedUser = getStoredSessionUser();
+      return storedUser ? normalizeUser(storedUser) : null;
     }
   },
 

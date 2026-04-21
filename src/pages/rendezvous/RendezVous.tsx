@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { getRendezVous } from '../../application/maman';
 import Pagination from '../../components/Pagination';
 import { usePagination } from '../../hooks/usePagination';
@@ -6,34 +7,51 @@ import { usePagination } from '../../hooks/usePagination';
 type Tab = 'upcoming' | 'past';
 
 export default function RendezVous() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
-  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const rdv = await getRendezVous();
-        setUpcomingAppointments(rdv || []);
+        setAppointments(rdv || []);
       } catch {
-        setUpcomingAppointments([]);
+        setAppointments([]);
       }
     };
 
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'upcoming', label: 'À venir', icon: 'ri-calendar-event-fill' },
     { id: 'past', label: 'Passés', icon: 'ri-history-line' },
   ];
 
-  // Mock past appointments
-  const pastAppointments = [
-    { id: 101, type: 'Consultation prénatale', date: '2025-03-15', heure: '09:00', professionnel: 'Dr. Fatou Sow', lieu: 'Hôpital Principal de Dakar', statut: 'completed' },
-    { id: 102, type: 'Échographie', date: '2025-03-01', heure: '14:00', professionnel: 'Dr. Marie Diop', lieu: 'Clinique Pasteur', statut: 'completed' },
-    { id: 103, type: 'Consultation prénatale', date: '2025-02-15', heure: '10:00', professionnel: 'Dr. Fatou Sow', lieu: 'Hôpital Principal de Dakar', statut: 'completed' },
-  ];
-  const displayedAppointments = activeTab === 'upcoming' ? upcomingAppointments : pastAppointments;
+  const splitAppointments = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const normalized = appointments.map((rdv) => {
+      const rdvDate = new Date(rdv.date);
+      rdvDate.setHours(0, 0, 0, 0);
+      const status = String(rdv.statut || '').toLowerCase();
+      const isPast = rdvDate < today || ['completed', 'termine', 'terminé', 'done'].includes(status);
+      return { ...rdv, isPast };
+    });
+
+    return {
+      upcoming: normalized
+        .filter((rdv) => !rdv.isPast)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date))),
+      past: normalized
+        .filter((rdv) => rdv.isPast)
+        .sort((a, b) => String(b.date).localeCompare(String(a.date))),
+    };
+  }, [appointments]);
+
+  const displayedAppointments = activeTab === 'upcoming' ? splitAppointments.upcoming : splitAppointments.past;
   const {
     page,
     setPage,
@@ -113,29 +131,36 @@ export default function RendezVous() {
       {/* ─── Tab: Passés ──────────────────────────────────────── */}
       {activeTab === 'past' && (
         <div className="space-y-4">
-          {paginatedAppointments.map(rdv => (
-            <div key={rdv.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 opacity-80">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <i className="ri-check-line text-gray-500"></i>
+          {displayedAppointments.length > 0 ? (
+            paginatedAppointments.map((rdv) => (
+              <div key={rdv.id} className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 opacity-80">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                      <i className="ri-check-line text-gray-500"></i>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800">{rdv.type}</h3>
+                      <p className="text-sm text-gray-500">
+                        {new Date(rdv.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">{rdv.type}</h3>
-                    <p className="text-sm text-gray-500">
-                      {new Date(rdv.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                  </div>
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">Terminé</span>
                 </div>
-                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">Terminé</span>
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <span>{rdv.professionnel}</span>
+                  <span>·</span>
+                  <span>{rdv.lieu}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span>{rdv.professionnel}</span>
-                <span>·</span>
-                <span>{rdv.lieu}</span>
-              </div>
+            ))
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center shadow-lg border border-gray-100">
+              <i className="ri-history-line text-5xl text-gray-300 mb-3"></i>
+              <p className="text-gray-500">Aucun rendez-vous passé trouvé</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 

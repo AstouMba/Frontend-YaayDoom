@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { getEvolutionGrossesse, getGrossesse, getRendezVous } from '../../application/maman';
+import { getConsultations } from '../../application/professionnel';
 
 type Tab = 'evolution' | 'rendezvous' | 'suivi';
 
 export default function Grossesse() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('evolution');
   const [semaineActuelle, setSemaineActuelle] = useState(0);
   const [datePrevue, setDatePrevue] = useState('');
   const [evolution, setEvolution] = useState<any[]>([]);
   const [rendezVous, setRendezVous] = useState<any[]>([]);
+  const [suiviMedical, setSuiviMedical] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -18,32 +22,27 @@ export default function Grossesse() {
           getEvolutionGrossesse(),
           getRendezVous(),
         ]);
+        const consultations = user?.id ? await getConsultations(user.id).catch(() => []) : [];
 
         setSemaineActuelle(grossesse?.semaineGrossesse || 0);
         setDatePrevue(grossesse?.dateAccouchePrevue || '');
         setEvolution(evol || []);
         setRendezVous(rdv || []);
+        setSuiviMedical(Array.isArray(consultations) ? consultations : []);
       } catch {
         setEvolution([]);
         setRendezVous([]);
+        setSuiviMedical([]);
       }
     };
 
     loadData();
-  }, []);
+  }, [user?.id]);
   
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'evolution', label: 'Évolution', icon: 'ri-line-chart-line' },
     { id: 'rendezvous', label: 'Rendez-vous', icon: 'ri-calendar-check-line' },
     { id: 'suivi', label: 'Suivi médical', icon: 'ri-stethoscope-line' },
-  ];
-
-  // Mock data for medical follow-up
-  const suiviMedical = [
-    { date: '15 Mars 2025', type: 'Consultation prénatale', professionnel: 'Dr. Fatou Sow', notes: 'Tout va bien. Tension normale. Bébé bouge bien.' },
-    { date: '1 Mars 2025', type: 'Échographie', professionnel: 'Dr. Marie Diop', notes: 'Échographie morphologique normale. Développement fœtal conforme.' },
-    { date: '15 Février 2025', type: 'Consultation prénatale', professionnel: 'Dr. Fatou Sow', notes: 'Prise de sang classique. Pas d\'anémie.' },
-    { date: '1 Février 2025', type: 'Consultation prénatale', professionnel: 'Dr. Fatou Sow', notes: 'Premier trimestre terminé. Grossesse évoluant normalement.' },
   ];
 
   return (
@@ -160,21 +159,42 @@ export default function Grossesse() {
               Prochains rendez-vous
             </h3>
             <div className="space-y-3">
-              {rendezVous.map(rdv => (
-                <div key={rdv.id} className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">
-                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <i className="ri-calendar-line text-orange-600 text-xl"></i>
+              {(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const upcoming = rendezVous
+                  .filter((rdv) => {
+                    const rdvDate = new Date(rdv.date);
+                    rdvDate.setHours(0, 0, 0, 0);
+                    return rdvDate >= today && String(rdv.statut || '').toLowerCase() !== 'completed';
+                  })
+                  .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+                if (upcoming.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-dashed border-orange-200 bg-orange-50 p-6 text-center">
+                      <i className="ri-calendar-close-line text-4xl text-orange-300"></i>
+                      <p className="mt-2 text-sm text-gray-500">Aucun rendez-vous à venir</p>
+                    </div>
+                  );
+                }
+
+                return upcoming.map((rdv) => (
+                  <div key={rdv.id} className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">
+                    <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <i className="ri-calendar-line text-orange-600 text-xl"></i>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{rdv.type}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(rdv.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à {rdv.heure}
+                      </p>
+                      <p className="text-xs text-teal-600 mt-1">{rdv.professionnel} · {rdv.lieu}</p>
+                    </div>
+                    <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium">Prévu</span>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">{rdv.type}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(rdv.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à {rdv.heure}
-                    </p>
-                    <p className="text-xs text-teal-600 mt-1">{rdv.professionnel} · {rdv.lieu}</p>
-                  </div>
-                  <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium">Prévu</span>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </div>
 
@@ -185,22 +205,41 @@ export default function Grossesse() {
               Historique des rendez-vous
             </h3>
             <div className="space-y-3">
-              {[
-                { date: '15 Mars 2025', type: 'Consultation prénatale', professionnel: 'Dr. Fatou Sow', lieu: 'Hôpital Principal' },
-                { date: '1 Mars 2025', type: 'Échographie', professionnel: 'Dr. Marie Diop', lieu: 'Clinique Pasteur' },
-                { date: '15 Février 2025', type: 'Consultation prénatale', professionnel: 'Dr. Fatou Sow', lieu: 'Hôpital Principal' },
-              ].map((rdv, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <i className="ri-check-line text-gray-500"></i>
+              {(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const past = rendezVous
+                  .filter((rdv) => {
+                    const rdvDate = new Date(rdv.date);
+                    rdvDate.setHours(0, 0, 0, 0);
+                    return rdvDate < today || String(rdv.statut || '').toLowerCase() === 'completed';
+                  })
+                  .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+                if (past.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+                      <i className="ri-history-line text-4xl text-gray-300"></i>
+                      <p className="mt-2 text-sm text-gray-500">Aucun rendez-vous passé trouvé</p>
+                    </div>
+                  );
+                }
+
+                return past.map((rdv) => (
+                  <div key={rdv.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <i className="ri-check-line text-gray-500"></i>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{rdv.type}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(rdv.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} · {rdv.professionnel}
+                      </p>
+                    </div>
+                    <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-lg text-xs">Terminé</span>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">{rdv.type}</p>
-                    <p className="text-sm text-gray-500">{rdv.date} · {rdv.professionnel}</p>
-                  </div>
-                  <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-lg text-xs">Terminé</span>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </div>
         </div>
@@ -215,21 +254,30 @@ export default function Grossesse() {
               Historique médical
             </h3>
             <div className="space-y-4">
-              {suiviMedical.map((suivi, idx) => (
-                <div key={idx} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <i className="ri-calendar-line text-teal-600"></i>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-gray-800">{suivi.type}</p>
-                      <span className="text-xs text-gray-500">{suivi.date}</span>
+              {suiviMedical.length > 0 ? (
+                suiviMedical.map((suivi, idx) => (
+                  <div key={suivi.id || idx} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <i className="ri-stethoscope-line text-teal-600"></i>
                     </div>
-                    <p className="text-sm text-gray-500 mb-1">{suivi.professionnel}</p>
-                    <p className="text-sm text-gray-600 bg-white p-2 rounded-lg border">{suivi.notes}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-semibold text-gray-800">{suivi.type}</p>
+                        <span className="text-xs text-gray-500">
+                          {suivi.date || '-'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 mb-1">{suivi.professionnel || 'Professionnel de santé'}</p>
+                      <p className="text-sm text-gray-600 bg-white p-2 rounded-lg border">{suivi.notes || 'Aucune note disponible'}</p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-teal-200 bg-teal-50 p-6 text-center">
+                  <i className="ri-stethoscope-line text-4xl text-teal-300"></i>
+                  <p className="mt-2 text-sm text-gray-500">Aucune consultation trouvée pour cette maman</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

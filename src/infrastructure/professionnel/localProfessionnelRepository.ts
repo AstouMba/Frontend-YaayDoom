@@ -18,11 +18,42 @@ const normalizeGrossesseStatut = (status: string | undefined | null): GrossesseP
   return 'EN_ATTENTE';
 };
 
+const pickGrossesseDate = (grossesse: Record<string, any>) =>
+  grossesse.date_debut ||
+  grossesse.dateDernieresRegles ||
+  grossesse.date_derniere_regle ||
+  grossesse.dateDerniereRegle ||
+  grossesse.derniere_regle ||
+  grossesse.last_menstrual_period ||
+  grossesse.lmp ||
+  '';
+
 const normalizeVaccinationStatut = (vaccin: Record<string, any>): Vaccination['statut'] => {
   if (vaccin.dateAdministre || vaccin.date_vaccination) return 'ADMINISTRE';
   if (vaccin.prochaine_dose || vaccin.prochainRappel) return 'A_VENIR';
   return 'A_VENIR';
 };
+
+const pickConsultationDate = (consultation: Record<string, any>) =>
+  consultation.date ||
+  consultation.date_consultation ||
+  consultation.dateConsultation ||
+  consultation.created_at ||
+  '';
+
+const pickConsultationNotes = (consultation: Record<string, any>) =>
+  consultation.notes ||
+  consultation.commentaire ||
+  consultation.observations ||
+  consultation.diagnostic ||
+  '';
+
+const pickVaccinationDate = (vaccination: Record<string, any>) =>
+  vaccination.dateAdministre ||
+  vaccination.date_vaccination ||
+  vaccination.date_administration ||
+  vaccination.dateAdministration ||
+  '';
 
 const mapPatient = (bebe: Record<string, any>): Patient => ({
   id: `p-${String(bebe.id)}`,
@@ -40,43 +71,59 @@ const mapGrossesse = (grossesse: Record<string, any>): GrossesseProfessionnelle 
   rawId: String(grossesse.id),
   mamanNom: grossesse.maman_nom || grossesse.mamanNom || `Maman #${grossesse.maman_id}`,
   mamanId: String(grossesse.maman_id),
-  semaineGrossesse: grossesse.semaineGrossesse ?? weekFromDate(grossesse.date_debut),
+  semaineGrossesse: grossesse.semaineGrossesse ?? grossesse.semaine_grossesse ?? weekFromDate(pickGrossesseDate(grossesse)),
   statut: normalizeGrossesseStatut(grossesse.statut),
-  dateDernieresRegles: grossesse.date_debut,
-  datePresumeAccouchement: grossesse.date_fin_prevue || grossesse.date_accouchement_prevue || null,
-  numeroTelephone: grossesse.telephone || '-',
-  email: grossesse.email || '-',
-  notes: grossesse.notes || '',
-  dateDeclaration: grossesse.created_at || grossesse.updated_at || null,
+  dateDernieresRegles: pickGrossesseDate(grossesse),
+  datePresumeAccouchement:
+    grossesse.date_fin_prevue ||
+    grossesse.date_accouchement_prevue ||
+    grossesse.dateAccouchementPrevue ||
+    grossesse.date_presume_accouchement ||
+    null,
+  numeroTelephone: grossesse.telephone || grossesse.numero_telephone || grossesse.phone || '-',
+  email: grossesse.email || grossesse.mail || '-',
+  notes: grossesse.notes || grossesse.antecedentsMedicaux || grossesse.commentaire || '',
+  dateDeclaration: grossesse.created_at || grossesse.updated_at || grossesse.date_declaration || grossesse.dateDeclaration || null,
 });
 
 const mapConsultation = (consultation: Record<string, any>): Consultation => ({
   id: String(consultation.id),
-  patientName: consultation.patient_name || consultation.maman_nom || `Maman #${consultation.maman_id}`,
-  patientId: `MAM-${consultation.maman_id}`,
-  type: consultation.type,
-  date: consultation.date,
-  tensionArterielle: consultation.tension_arterielle || '-',
-  poids: consultation.poids || '-',
-  notes: consultation.notes || '',
-  semaineGrossesse: consultation.semaineGrossesse || 0,
-  mamanId: String(consultation.maman_id),
-  professionnelId: String(consultation.professionnel_id || ''),
-  heure: consultation.heure || '09:00:00',
+  patientName:
+    consultation.patient_name ||
+    consultation.patientName ||
+    consultation.maman_nom ||
+    consultation.mamanNom ||
+    consultation.nom ||
+    `Maman #${consultation.maman_id || consultation.patient_id || ''}`,
+  patientId: `MAM-${consultation.maman_id || consultation.patient_id || ''}`,
+  type: consultation.type || consultation.motif || consultation.categorie || 'Consultation',
+  date: pickConsultationDate(consultation),
+  tensionArterielle: consultation.tension_arterielle || consultation.tension || consultation.bp || '-',
+  poids: consultation.poids || consultation.weight || '-',
+  notes: pickConsultationNotes(consultation),
+  semaineGrossesse: consultation.semaineGrossesse || consultation.semaine_grossesse || consultation.week || 0,
+  mamanId: String(consultation.maman_id || consultation.patient_id || ''),
+  professionnelId: String(consultation.professionnel_id || consultation.professional_id || ''),
+  heure: consultation.heure || consultation.time || '09:00:00',
 });
 
 const mapVaccination = (vaccination: Record<string, any>, bebe?: Record<string, any>): Vaccination => ({
   id: String(vaccination.id),
-  patientName: bebe ? `Maman #${bebe.maman_id}` : '-',
-  patientId: bebe ? `MAM-${bebe.maman_id}` : '-',
-  bebeNom: bebe?.nom || `Bebe #${vaccination.bebe_id}`,
-  bebeId: String(vaccination.bebe_id),
-  bebeAge: bebe?.age_actuel || '-',
-  vaccin: vaccination.nom_vaccin || vaccination.nom,
-  dateAdministration: vaccination.date_vaccination || vaccination.prochaine_dose || '',
+  patientName:
+    bebe?.maman_nom ||
+    vaccination.patient_name ||
+    vaccination.patientName ||
+    vaccination.maman_nom ||
+    `Maman #${bebe?.maman_id || vaccination.maman_id || ''}`,
+  patientId: bebe ? `MAM-${bebe.maman_id}` : `MAM-${vaccination.maman_id || vaccination.patient_id || ''}`,
+  bebeNom: bebe?.nom || bebe?.name || vaccination.bebe_nom || vaccination.bebeName || `Bebe #${vaccination.bebe_id}`,
+  bebeId: String(vaccination.bebe_id || bebe?.id || ''),
+  bebeAge: bebe?.age_actuel || bebe?.age || vaccination.bebe_age || '-',
+  vaccin: vaccination.nom_vaccin || vaccination.nom || vaccination.vaccin || 'Vaccin',
+  dateAdministration: pickVaccinationDate(vaccination) || vaccination.prochaine_dose || vaccination.prochainRappel || '',
   statut: normalizeVaccinationStatut(vaccination),
-  prochainRappel: vaccination.prochaine_dose || undefined,
-  notes: vaccination.notes || '',
+  prochainRappel: vaccination.prochaine_dose || vaccination.prochainRappel || vaccination.date_prochaine_dose || undefined,
+  notes: vaccination.notes || vaccination.commentaire || vaccination.observations || '',
   raw: vaccination,
 });
 
@@ -174,7 +221,9 @@ export const localProfessionnelRepository: ProfessionnelRepository = {
   },
 
   async validateGrossesse(id: string) {
-    throw makeUnsupportedError('La validation directe des grossesses a été retirée côté backend.');
+    const rawId = String(id).replace('g-', '');
+    const { data } = await api.post(`/grossesses/${rawId}/validate`, {});
+    return data;
   },
 
   async rejectGrossesse(id: string) {

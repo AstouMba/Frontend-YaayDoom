@@ -4,6 +4,8 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, Title, Tooltip, Legend, Filler,
 } from 'chart.js';
+import { useAuth } from '../../context/AuthContext';
+import { getConsultations } from '../../application/professionnel';
 import { getBebe, getCroissanceBebe, getVaccins } from '../../application/maman';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
@@ -11,10 +13,12 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 type Tab = 'infos' | 'croissance' | 'historique';
 
 export default function Bebe() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('infos');
   const [bebe, setBebe] = useState<any>(null);
   const [croissance, setCroissance] = useState<any[]>([]);
   const [vaccins, setVaccins] = useState<any[]>([]);
+  const [consultations, setConsultations] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -24,18 +28,21 @@ export default function Bebe() {
           getCroissanceBebe(),
           getVaccins(),
         ]);
+        const consultationsData = user?.id ? await getConsultations(user.id).catch(() => []) : [];
         setBebe(bebeData);
         setCroissance(croissanceData || []);
         setVaccins(vaccinsData || []);
+        setConsultations(Array.isArray(consultationsData) ? consultationsData : []);
       } catch {
         setBebe(null);
         setCroissance([]);
         setVaccins([]);
+        setConsultations([]);
       }
     };
 
     loadData();
-  }, []);
+  }, [user?.id]);
 
   if (!bebe) {
     return (
@@ -265,44 +272,51 @@ export default function Bebe() {
             <i className="ri-history-line text-teal-600"></i>
             Historique des consultations
           </h3>
-          {[
-            { date: '10 Nov 2024', type: 'Consultation de routine', pro: 'Dr. Fatou Sall', poids: '9.1 kg', taille: '74 cm', notes: 'Développement normal. Vaccins à jour. Alimentation diversifiée bien tolérée.' },
-            { date: '15 Oct 2024', type: 'Vaccination', pro: 'Sage-femme Aïssatou Ba', poids: '8.7 kg', taille: '72 cm', notes: 'ROR administré. Aucune réaction adverse observée.' },
-            { date: '20 Sep 2024', type: 'Consultation de routine', pro: 'Dr. Fatou Sall', poids: '8.4 kg', taille: '71 cm', notes: 'Croissance satisfaisante. Diversification alimentaire bien débutée.' },
-            { date: '15 Août 2024', type: 'Consultation de routine', pro: 'Dr. Fatou Sall', poids: '8.0 kg', taille: '69 cm', notes: 'Bébé en bonne santé. Rappel BCG effectué.' },
-          ].map((c, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 shadow-md border-l-4 border-teal-500">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-1">
-                    <i className="ri-stethoscope-line text-orange-500"></i>
-                    {c.type}
-                  </h4>
-                  <p className="text-sm text-gray-500 flex items-center gap-1">
-                    <i className="ri-calendar-line"></i>{c.date}
-                  </p>
-                </div>
-                <span className="px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-xs font-medium">{c.pro}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-50">
-                  <i className="ri-scales-3-line text-orange-500"></i>
+          {consultations.length > 0 ? (
+            consultations.map((c, i) => (
+              <div key={c.id || i} className="bg-white rounded-2xl p-5 shadow-md border-l-4 border-teal-500">
+                <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <p className="text-xs text-gray-500">Poids</p>
-                    <p className="font-bold text-gray-800">{c.poids}</p>
+                    <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-1">
+                      <i className="ri-stethoscope-line text-orange-500"></i>
+                      {c.type || 'Consultation'}
+                    </h4>
+                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                      <i className="ri-calendar-line"></i>
+                      {c.date ? new Date(c.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Date inconnue'}
+                    </p>
+                  </div>
+                  <span className="px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-xs font-medium">
+                    {c.professionnelId ? `Pro #${c.professionnelId}` : c.professionnel || 'Professionnel'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-50">
+                    <i className="ri-scales-3-line text-orange-500"></i>
+                    <div>
+                      <p className="text-xs text-gray-500">Poids</p>
+                      <p className="font-bold text-gray-800">{c.poids || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-50">
+                    <i className="ri-ruler-line text-teal-600"></i>
+                    <div>
+                      <p className="text-xs text-gray-500">Taille</p>
+                      <p className="font-bold text-gray-800">{c.taille || '-'}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-50">
-                  <i className="ri-ruler-line text-teal-600"></i>
-                  <div>
-                    <p className="text-xs text-gray-500">Taille</p>
-                    <p className="font-bold text-gray-800">{c.taille}</p>
-                  </div>
-                </div>
+                <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 border border-gray-200">
+                  {c.notes || 'Aucune note disponible'}
+                </p>
               </div>
-              <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 border border-gray-200">{c.notes}</p>
+            ))
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center shadow-lg border border-gray-100">
+              <i className="ri-inbox-line text-5xl text-gray-300 mb-3"></i>
+              <p className="text-gray-500">Aucune consultation trouvée pour ce bébé</p>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

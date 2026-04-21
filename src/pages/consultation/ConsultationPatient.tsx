@@ -52,6 +52,17 @@ interface Vaccin {
   notes: string;
 }
 
+const formatDateValue = (value: string | null | undefined) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+};
+
 const ConsultationPatient = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -371,21 +382,13 @@ const ConsultationPatient = () => {
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
               <div className="text-sm text-gray-600 mb-1">Accouchement prévu</div>
               <div className="text-base font-bold" style={{ color: 'var(--dark-brown)' }}>
-                {new Date(patientData.grossesse.dateAccouchementPrevue).toLocaleDateString('fr-FR', { 
-                  day: '2-digit', 
-                  month: 'long', 
-                  year: 'numeric' 
-                })}
+                {formatDateValue(patientData.grossesse.dateAccouchementPrevue)}
               </div>
             </div>
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
               <div className="text-sm text-gray-600 mb-1">Dernières règles</div>
               <div className="text-base font-bold" style={{ color: 'var(--dark-brown)' }}>
-                {new Date(patientData.grossesse.dateDernieresRegles).toLocaleDateString('fr-FR', { 
-                  day: '2-digit', 
-                  month: 'long', 
-                  year: 'numeric' 
-                })}
+                {formatDateValue(patientData.grossesse.dateDernieresRegles)}
               </div>
             </div>
           </div>
@@ -403,7 +406,7 @@ const ConsultationPatient = () => {
                 <div>
                   <div className="text-gray-600">Date de naissance</div>
                   <div className="font-medium" style={{ color: 'var(--dark-brown)' }}>
-                    {new Date(patientData.bebe.dateNaissance).toLocaleDateString('fr-FR')}
+                    {formatDateValue(patientData.bebe.dateNaissance)}
                   </div>
                 </div>
                 <div>

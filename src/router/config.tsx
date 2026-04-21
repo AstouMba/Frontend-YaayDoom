@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { RouteObject } from 'react-router-dom';
+import { Navigate, RouteObject } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import DashboardMamanLayout from '../layouts/DashboardMamanLayout';
 import DashboardProLayout from '../layouts/DashboardProLayout';
@@ -15,7 +15,6 @@ const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 // Pages maman
 const DashboardMaman = lazy(() => import('../pages/dashboard/DashboardMaman'));
 const Bebe = lazy(() => import('../pages/bebe/Bebe'));
-const Carte = lazy(() => import('../pages/carte/Carte'));
 const Vaccination = lazy(() => import('../pages/vaccination/Vaccination'));
 const CreateGrossesse = lazy(() => import('../pages/grossesse/CreateGrossesse'));
 const Grossesse = lazy(() => import('../pages/grossesse/Grossesse'));
@@ -52,7 +51,7 @@ const routes: RouteObject[] = [
       { index: true, element: <DashboardMaman /> },
       { path: 'bebe', element: <Bebe /> },
       { path: 'vaccination', element: <Vaccination /> },
-      { path: 'carte', element: <Carte /> },
+      { path: 'carte', element: <Navigate to="/dashboard-maman" replace /> },
       { path: 'grossesse', element: <Grossesse /> },
       { path: 'rendez-vous', element: <RendezVous /> },
       { path: 'create-grossesse', element: <CreateGrossesse /> },

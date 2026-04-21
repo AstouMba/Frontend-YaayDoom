@@ -25,6 +25,12 @@ interface VaccinationRecord {
   notes: string;
 }
 
+const formatDate = (value?: string) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+};
+
 const VaccinationsPro = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState<'TOUS' | VaccinationStatus>('TOUS');
@@ -286,17 +292,17 @@ const VaccinationsPro = () => {
                   <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background-soft)' }}>
                     <div className="text-xs text-gray-600 mb-1">Date administration</div>
                     <div className="text-sm font-bold" style={{ color: 'var(--dark-brown)' }}>
-                      {vaccination.dateAdministration ? new Date(vaccination.dateAdministration).toLocaleDateString('fr-FR') : '-'}
+                      {formatDate(vaccination.dateAdministration)}
                     </div>
                   </div>
                   {vaccination.prochainRappel && (
                     <div className="col-span-2 p-3 rounded-lg border border-orange-200 bg-orange-50">
-                      <div className="text-xs text-orange-700 mb-1 font-medium">
+                    <div className="text-xs text-orange-700 mb-1 font-medium">
                         <i className="ri-calendar-line mr-1"></i>
                         Prochain rappel
                       </div>
                       <div className="text-sm font-bold text-orange-800">
-                        {new Date(vaccination.prochainRappel).toLocaleDateString('fr-FR')}
+                        {formatDate(vaccination.prochainRappel)}
                       </div>
                     </div>
                   )}

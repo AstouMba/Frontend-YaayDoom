@@ -40,7 +40,23 @@ export default function DashboardMaman() {
 
   useEffect(() => {
     loadGrossesse();
-  }, []);
+  }, [user?.id]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user?.id && document.visibilityState === 'visible') {
+        loadGrossesse();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [user?.id]);
 
   const handleCreateGrossesse = async (data: any) => {
     setLoading(true);
@@ -128,17 +144,22 @@ export default function DashboardMaman() {
 
       {/* ─── Cas 3 : Grossesse VALIDEE ────────────────────────────────────── */}
       {grossesseStatut === 'VALIDEE' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Carte QR */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Ma carte de santé</h2>
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)] gap-6 items-start">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-lg border border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">Ma carte de santé</h2>
+                <p className="text-sm text-gray-500">
+                  Carte numérique style NFC, aux couleurs de YaayDoom+.
+                </p>
+              </div>
+            </div>
+
             <QRCard userName={user?.name || 'Aminata Diallo'} userId={user?.id || 'YD-2024-001234'} />
           </div>
 
-          {/* Accès rapides */}
-          <div className="space-y-4">
-            {/* Stats simples */}
-            <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+          <div className="space-y-4 xl:pt-12">
+            <div className="bg-white rounded-3xl p-5 shadow-lg border border-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Semaine de grossesse</p>
@@ -150,36 +171,42 @@ export default function DashboardMaman() {
               </div>
             </div>
 
-            {/* Boutons rapides */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
-              <button 
+            <div className="bg-white rounded-3xl p-5 shadow-lg border border-gray-100">
+              <div className="flex items-center gap-2 mb-4">
+                <i className="ri-flashlight-line text-teal-600"></i>
+                <h3 className="text-base font-bold text-gray-800">Accès rapides</h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+              <button
                 onClick={() => navigate('/dashboard-maman/grossesse')}
-                className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 text-white font-semibold flex flex-col items-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
+                className="min-h-[84px] p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 text-white font-semibold flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
               >
                 <i className="ri-heart-pulse-line text-xl sm:text-2xl"></i>
                 <span className="text-xs sm:text-sm">Ma Grossesse</span>
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/dashboard-maman/rendez-vous')}
-                className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white font-semibold flex flex-col items-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
+                className="min-h-[84px] p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white font-semibold flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
               >
                 <i className="ri-calendar-check-line text-xl sm:text-2xl"></i>
                 <span className="text-xs sm:text-sm">Rendez-vous</span>
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/dashboard-maman/bebe')}
-                className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 text-white font-semibold flex flex-col items-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
+                className="min-h-[84px] p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 text-white font-semibold flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
               >
                 <i className="ri-baby-line text-xl sm:text-2xl"></i>
                 <span className="text-xs sm:text-sm">Mon Bébé</span>
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/dashboard-maman/vaccination')}
-                className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-500 text-white font-semibold flex flex-col items-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
+                className="min-h-[84px] p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-500 text-white font-semibold flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer shadow-lg text-center"
               >
                 <i className="ri-syringe-line text-xl sm:text-2xl"></i>
                 <span className="text-xs sm:text-sm">Vaccination</span>
               </button>
+              </div>
             </div>
           </div>
         </div>

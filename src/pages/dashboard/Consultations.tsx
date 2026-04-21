@@ -17,6 +17,12 @@ interface Consultation {
   semaineGrossesse: number;
 }
 
+const formatDate = (value?: string) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+};
+
 const Consultations = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('TOUS');
@@ -166,7 +172,7 @@ const Consultations = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--background-soft)', color: 'var(--primary-teal)' }}>
                       <i className="ri-calendar-line mr-1"></i>
-                      {new Date(consultation.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      {formatDate(consultation.date)}
                     </span>
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                       {consultation.semaineGrossesse} SA
